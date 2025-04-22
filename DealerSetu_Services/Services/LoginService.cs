@@ -11,7 +11,6 @@ namespace DealerSetu_Services.Services
     public class LoginService : ILoginService
     {
         private readonly ILoginRepository _loginRepo;
-        private readonly IReportRepository _loinRepo;
         private readonly IConfiguration _configuration;
         private readonly DealerSetu.Repository.Common.Utility _utility;
         private readonly JwtTokenGenerator _jwtTokenGenerator;
