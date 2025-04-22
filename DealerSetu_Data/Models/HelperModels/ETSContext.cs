@@ -11,7 +11,6 @@ namespace DealerSetu_Data.Models.HelperModels
 
         public DbSet<UserDetails> tb_userDetails { get; set; }
 
-
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<UserDetails>(entity =>
