@@ -1,0 +1,6 @@
+@DealerSetu_HostAddress = http://localhost:5055
+
+GET {{DealerSetu_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

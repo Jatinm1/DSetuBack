@@ -1,0 +1,78 @@
+﻿using Microsoft.AspNetCore.Http;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace DealerSetu_Data.Models.HelperModels
+{
+    public static class MagicNumberClass
+    {
+        public static string MagicNumber(IFormFile file)
+        {
+            if (file != null && file.Length > 0)
+            {
+                string data = "";
+                using (var ms = new MemoryStream())
+                {
+                    file.CopyTo(ms);
+                    var fileBytes = ms.ToArray();
+                    data = BitConverter.ToString(fileBytes);
+                    // act on the Base64 data
+                }
+                //string data_as_hex = BitConverter.ToString(data);
+                //reader.Close();
+
+                // substring to select first 11 characters from hexadecimal array    
+                string my = data.Substring(0, 11);
+                string output = null;
+                switch (my)
+                {
+                    case "38-42-50-53":
+                        output = "psd";
+                        break;
+
+                    case "25-50-44-46":
+                        output = "pdf";
+                        break;
+
+                    case "49-49-2A-00":
+                        output = "tif";
+                        break;
+
+                    case "4D-4D-00-2A":
+                        output = "tiff";
+                        break;
+
+                    case "FF-D8-FF-E0":
+                        output = "jpg";
+                        break;
+
+                    case "89-50-4E-47":
+                        output = png";
+                        break;
+
+                    case "50-4B-03-04":
+                        output = "DOCX";
+                        break;
+
+                    case "EF-BB-BF-4F":
+                        output = " => CSV";
+                        break;
+                    case "53-65-72-69":
+                        output = " => CSV";
+                        break;
+                    default:
+                        output = string.Empty;
+                        break;
+
+                }
+                return output;
+            }
+            return "";
+        }
+
+
+    }
+}

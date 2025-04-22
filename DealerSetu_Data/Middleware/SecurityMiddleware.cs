@@ -1,0 +1,194 @@
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using System.Linq;
+using System.Threading.Tasks;
+
+public class SecurityMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly string[] _allowedHosts;
+    private readonly string[] _allowedContentTypes;
+
+    public SecurityMiddleware(RequestDelegate next, IConfiguration configuration)
+    {
+        _next = next;
+        _allowedHosts = configuration.GetSection("AllowedHosts").Get<string[]>() ?? Array.Empty<string>();
+        _allowedContentTypes = new[] {
+            "application/json",
+            "multipart/form-data",
+            "application/x-www-form-urlencoded",
+            // Excel file types
+            "application/vnd.ms-excel",                     // .xls
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  // .xlsx
+            "application/vnd.ms-excel.sheet.macroEnabled.12",  // .xlsm
+            "application/vnd.ms-excel.sheet.binary.macroEnabled.12",  // .xlsb
+            "text/csv"  // .csv files
+        };
+
+        if (_allowedHosts.Length == 0)
+        {
+            throw new ArgumentException("AllowedHosts configuration is required and cannot be empty.");
+        }
+    }
+
+    public async Task Invoke(HttpContext context)
+    {
+        // 1. Host Header Validation
+        var requestHost = context.Request.Host.Value.ToLower();
+        if (!_allowedHosts.Contains(requestHost))
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            await context.Response.WriteAsync("Invalid Host Header");
+            return;
+        }
+
+        // 2. XSS Protection
+        if (IsXssAttempt(context))
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await context.Response.WriteAsync("Potential XSS Attack Detected");
+            return;
+        }
+
+        // 3. Content Type Validation for all endpoints
+        //if (!ValidateContentType(context))
+        //{
+        //    context.Response.StatusCode = StatusCodes.Status415UnsupportedMediaType;
+        //    await context.Response.WriteAsync("Invalid Content Type");
+        //    return;
+        //}
+
+        // 4. Security Headers
+        AddSecurityHeaders(context);
+
+        await _next(context);
+    }
+
+    private bool IsXssAttempt(HttpContext context)
+    {
+        // Skip XSS check for file uploads
+        if (context.Request.HasFormContentType &&
+            context.Request.Form.Files.Any())
+        {
+            return false;
+        }
+
+        // Check query string
+        if (context.Request.QueryString.HasValue)
+        {
+            var query = context.Request.QueryString.Value.ToLower();
+            if (ContainsSuspiciousContent(query)) return true;
+        }
+
+        // Check request path
+        var path = context.Request.Path.Value?.ToLower();
+        if (path != null && ContainsSuspiciousContent(path)) return true;
+
+        // Check form data
+        if (context.Request.HasFormContentType)
+        {
+            try
+            {
+                var form = context.Request.Form;
+                foreach (var key in form.Keys)
+                {
+                    var values = form[key];
+                    foreach (var value in values)
+                    {
+                        if (ContainsSuspiciousContent(value)) return true;
+                    }
+                }
+            }
+            catch
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool ContainsSuspiciousContent(string content)
+    {
+        string[] suspicious = new[] {
+            "<script",
+            "javascript:",
+            "data:",
+            "vbscript:",
+            "onerror=",
+            "onload=",
+            "onmouseover=",
+            "onfocus=",
+            "onblur=",
+            "eval(",
+            "document.cookie",
+            "document.write",
+            "innerHTML",
+            "fromCharCode",
+            "<!--",
+            "-->",
+            "<iframe",
+            "<object",
+            "<embed"
+        };
+        return suspicious.Any(x => content.Contains(x));
+    }
+
+    private bool ValidateContentType(HttpContext context)
+    {
+        if (context.Request.Method == "GET" || context.Request.Method == "DELETE")
+            return true;
+
+        // For multipart form data, check individual file content types
+        if (context.Request.HasFormContentType &&
+            context.Request.Form.Files.Any())
+        {
+            return context.Request.Form.Files.All(file =>
+                _allowedContentTypes.Any(allowed =>
+                    file.ContentType.ToLower().Contains(allowed)));
+        }
+
+        var contentType = context.Request.ContentType?.ToLower() ?? "";
+        return _allowedContentTypes.Any(allowed => contentType.Contains(allowed));
+    }
+
+    private void AddSecurityHeaders(HttpContext context)
+    {
+        var headers = context.Response.Headers;
+
+        context.Response.Headers.Remove("X-Powered-By");
+        context.Response.Headers.Remove("Server");
+        context.Request.Headers.Remove("Server");
+        context.Response.Headers.Remove("X-AspNet-Version");
+        context.Response.Headers.Remove("X-AspNetMvc-Version");
+
+        // Security headers for all endpoints
+        headers["X-Content-Type-Options"] = "nosniff";
+        headers["X-Frame-Options"] = "SAMEORIGIN";
+        headers["X-XSS-Protection"] = "1; mode=block";
+        headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+        headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+        headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=(), payment=(), usb=(), vr=()";
+        //headers["Cross-Origin-Embedder-Policy"] = "require-corp";
+        //headers["Cross-Origin-Opener-Policy"] = "same-origin";
+        //headers["Cross-Origin-Resource-Policy"] = "same-origin";
+        //headers["Clear-Site-Data"] = "cache, cookies, storage, executionContexts";
+        headers["X-Permitted-Cross-Domain-Policies"] = "none";
+        headers["Cache-Control"] = "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
+
+        // CSP header adjusted to allow file downloads
+        //headers["Content-Security-Policy"] =
+        //    "default-src 'self'; " +
+        //    "script-src 'self'; " +
+        //    "style-src 'self'; " +
+        //    "img-src 'self' data:; " +
+        //    "font-src 'self'; " +
+        //    "object-src 'none'; " +
+        //    "frame-ancestors 'self' https://swdsetu.m-devsecops.com; " +
+        //    "form-action 'self'; " +
+        //    "base-uri 'self'; " +
+        //    "download-src 'self';";
+
+
+    }
+}
