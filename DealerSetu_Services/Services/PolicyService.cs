@@ -91,7 +91,7 @@ namespace dealersetu_services.services
 
                         // Upload to Azure Blob Storage and get the Blob URL
                         var blobUrl = await AddDocs(request.RecomendationFileName, updatedFileName);
-                        request.UpdatedName = blobUrl; // Store the Blob URL instead of filename
+                        request.UpdatedName = updatedFileName; // Store the Blob URL instead of filename
                     }
                     else
                     {
