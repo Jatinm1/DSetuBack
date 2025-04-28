@@ -412,18 +412,7 @@ namespace DealerSetu_Services.Services
             try
             {
                 ActualClaimModel actualclaimDetails = await _newDealerRepo.ActualClaimDetailsRepo(activityId);
-                if (actualclaimDetails.Image1 != null)
-                {
-                    actualclaimDetails.Image1 = _blobStorageService.GetImageURL(actualclaimDetails.Image1);
-                }
-                if (actualclaimDetails.Image2 != null)
-                {
-                    actualclaimDetails.Image2 = _blobStorageService.GetImageURL(actualclaimDetails.Image2);
-                }
-                if (actualclaimDetails.Image3 != null)
-                {
-                    actualclaimDetails.Image3 = _blobStorageService.GetImageURL(actualclaimDetails.Image3);
-                }
+                
                 return new ServiceResponse
                 {
                     isError = false,
