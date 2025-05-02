@@ -21,6 +21,7 @@ namespace DealerSetu_Data.Models.ViewModels
         public string CreatedByName { get; set; }
         public int StatusId { get; set; }
         public string Status { get; set; }
+        public string ActualClaimStatus { get; set; }
         public bool IsRejected { get; set; }
         public string RejectedBy { get; set; }
         public string RejectedRemarks { get; set; }
