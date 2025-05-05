@@ -89,8 +89,8 @@ namespace DealerSetu.Controllers
                     //    return Ok(new { Message = "reCAPTCHA Verification Failed.", Status = 500 });
                     //}
 
-                    var result = await _loginService.Login_Service(loginModel); // Local
-                    //var result = await _loginService.LDAPLoginService(loginModel); // LDAP
+                    //var result = await _loginService.Login_Service(loginModel); // Local
+                    var result = await _loginService.LDAPLoginService(loginModel); // LDAP
                     return Ok(result);
 
 
