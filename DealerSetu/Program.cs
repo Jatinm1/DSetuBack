@@ -132,12 +132,13 @@ builder.Services.AddSwaggerGen(opt =>
 #region CORS Policy
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("CorsPolicy", policy =>
+    options.AddPolicy("CorsPolicy", builder =>
     {
-        policy.WithOrigins("http://localhost:4200")
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials(); // This is crucial for requests with credentials
+        // builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();  // local
+        builder.WithOrigins("http://localhost:4200").AllowAnyMethod().AllowAnyHeader().AllowCredentials();   // Staging
+        builder.WithOrigins("http://dealersetu.stg103.netsmartz.us").AllowAnyMethod().AllowAnyHeader().AllowCredentials();   // Staging
+        builder.WithOrigins("https://swdsetu.m-devsecops.com").AllowAnyMethod().AllowAnyHeader().AllowCredentials();   // Developement
+
     });
 });
 #endregion
