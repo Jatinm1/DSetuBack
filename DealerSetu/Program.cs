@@ -58,6 +58,7 @@ builder.Services.AddSingleton<RSAEncryptionService>();
 builder.Services.AddSingleton<RecaptchaService>();  // Register RecaptchaService Dependency
 builder.Services.AddSingleton<JwtHelper>();
 builder.Services.AddSingleton<ValidationHelper>();
+builder.Services.AddScoped<StorageDiagnosticsService>();
 //builder.Services.AddSingleton<IEmailService, EmailService>();
 //// Configure email settings
 //builder.Services.Configure<EmailSettings>(

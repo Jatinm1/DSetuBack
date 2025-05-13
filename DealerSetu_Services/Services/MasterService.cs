@@ -1,4 +1,4 @@
-﻿using Azure.Storage.Blobs;
+﻿//using Azure.Storage.Blobs;
 using DealerSetu.Repository.Common;
 using DealerSetu_Data.Models.HelperModels;
 using DealerSetu_Data.Models.ViewModels;
@@ -403,14 +403,14 @@ namespace DealerSetu_Services.Services
             if (string.IsNullOrEmpty(fileName))
                 throw new ArgumentException("File name cannot be null or empty.", nameof(fileName));
 
-
-            var storageAccount = CloudStorageAccount.Parse(_storageConnectionString);
-            var blobClient = storageAccount.CreateCloudBlobClient();
             var blobUrl = await _masterRepository.GetBlobUrlByFileNameAsync(fileName);
-            var completeBLOB = $"{blobClient.StorageUri.PrimaryUri}{_containerName}/{blobUrl}";
 
             if (string.IsNullOrEmpty(blobUrl))
                 throw new FileNotFoundException("File not found in the storage.");
+
+            var storageAccount = CloudStorageAccount.Parse(_storageConnectionString);
+            var blobClient = storageAccount.CreateCloudBlobClient();
+            var completeBLOB = $"{blobClient.StorageUri.PrimaryUri}{_containerName}/{blobUrl}";
 
             var blob = new CloudBlockBlob(new Uri(completeBLOB), blobClient.Credentials);
 
