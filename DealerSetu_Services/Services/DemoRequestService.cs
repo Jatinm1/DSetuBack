@@ -82,6 +82,38 @@ namespace DealerSetu_Services.Services
             }
         }
 
+        public async Task<ServiceResponse> DemoTractorPendingClaimService(FilterModel filter, int pageIndex, int pageSize)
+        {
+            _logger.LogInformation("Getting pending demo tractor list with filters");
+
+            try
+            {
+                ValidateFilterParams(filter, pageIndex, pageSize);
+
+                var (pendingDemoTractorList, totalCount) = await _demoRequestRepository.DemoTractorPendingClaimRepo(filter, pageIndex, pageSize);
+
+                _logger.LogInformation("Retrieved {Count} pending demo tractors out of {Total}",
+                    pendingDemoTractorList.Count, totalCount);
+
+                return CreateSuccessResponse(
+                    pendingDemoTractorList,
+                    totalCount,
+                    "Pending demo tractor list retrieved successfully");
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Invalid parameters in DemoTractorPendingService");
+                return CreateErrorResponse(ex, "Invalid parameters for retrieving pending demo tractor list", "400");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in DemoTractorPendingService");
+                return CreateErrorResponse(ex, "Error while retrieving pending demo tractor list");
+            }
+        }
+
+
+
         public async Task<ServiceResponse> FiscalYearsService()
         {
             _logger.LogInformation("Getting fiscal years");
@@ -203,6 +235,33 @@ namespace DealerSetu_Services.Services
             }
         }
 
+        public async Task<ServiceResponse> UpdateDemoReqService(DemoReqUpdateModel request, string empNo)
+        {
+            try
+            {
+                var reqNo = await _demoRequestRepository.UpdateDemoReqRepo(request, empNo);
+                return new ServiceResponse
+                {
+                    isError = false,
+                    result = reqNo,
+                    Message = "Demo Request Updated successfully",
+                    Status = "Success",
+                    Code = "200"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ServiceResponse
+                {
+                    isError = true,
+                    Error = ex.Message,
+                    Message = "Error Updating Demo Request",
+                    Status = "Error",
+                    Code = "500"
+                };
+            }
+        }
+
         public async Task<ServiceResponse> DemoActualClaimListService(FilterModel filter)
         {
             try
@@ -268,7 +327,7 @@ namespace DealerSetu_Services.Services
                     }
                 }
 
-                if (request.FileSale == null)
+                if (request.ChassisNo != null)
                 {
                     var claimId = await _demoRequestRepository.AddBasicDemoActualClaimRepo(request);
 
@@ -333,6 +392,38 @@ namespace DealerSetu_Services.Services
                     Status = "Error",
                     Code = "500"
                 };
+            }
+        }
+
+        public async Task<ServiceResponse> DemoTractorApproveRejectClaimService(FilterModel filter)
+        {
+            _logger.LogInformation("Processing {Action} for request ID {ReqId}",
+                (bool)filter.IsApproved ? "approval" : "rejection", filter.ReqId);
+
+            try
+            {
+                ValidateApprovalRequest(filter);
+
+                var result = await _demoRequestRepository.DemoTractorApproveRejectClaimRepo(filter);
+
+                var actionType = (bool)filter.IsApproved ? "approved" : "rejected";
+                _logger.LogInformation("Demo tractor claim {Action} successfully with result {Result}",
+                    actionType, result);
+
+                return CreateSuccessResponse(
+                    result,
+                    1,
+                    $"Demo tractor Claim {actionType} successfully");
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Invalid approval/rejection parameters");
+                return CreateErrorResponse(ex, "Invalid parameters for demo tractor approval/rejection", "400");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in DemoTractorApproveRejectClaimService for request ID {ReqId}", filter.ReqId);
+                return CreateErrorResponse(ex, "Error approving/rejecting demo tractor Claim");
             }
         }
 

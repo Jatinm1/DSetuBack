@@ -19,6 +19,7 @@ namespace DealerSetu.Controllers
         private readonly JwtHelper _jwtHelper;
         private readonly ValidationHelper _validationHelper;
         private readonly ILogger<DemoRequestController> _logger;
+        private readonly FileLoggerService _fileLogger;
         private const long MaxFileSize = 20 * 1024 * 1024; // 20 MB
 
 
@@ -36,6 +37,7 @@ namespace DealerSetu.Controllers
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _fileValidationService = fileValidationService;
             _blobStorageService = blobStorageService;
+            _fileLogger = new FileLoggerService();
         }
 
         [HttpPost("GetDemoTractorList")]
@@ -56,6 +58,7 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in DemoTractorApproved");
+                _fileLogger.LogError("DemoRequestController", "Error in DemoTractorApproved", ex);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request.");
             }
         }
@@ -78,6 +81,30 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in DemoTractorPending");
+                _fileLogger.LogError("DemoRequestController", "Error in DemoTractorPending", ex);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request.");
+            }
+        }
+
+        [HttpPost("DemoTractorPendingClaimList")]
+        public async Task<IActionResult> DemoTractorPendingClaim([FromBody] DemoTractorRequestModel request)
+        {
+            try
+            {
+                var validationResult = _validationHelper.ValidateDemoTractorRequest(request);
+                if (validationResult != null)
+                {
+                    return BadRequest(validationResult);
+                }
+
+                var filter = CreateFilterModel(request);
+                var result = await _demoService.DemoTractorPendingClaimService(filter, (int)request.PageIndex, (int)request.PageSize);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in DemoTractorPendingClaim");
+                _fileLogger.LogError("DemoRequestController", "Error in DemoTractorPendingClaim", ex);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request.");
             }
         }
@@ -99,6 +126,7 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in GetFiscalYears");
+                _fileLogger.LogError("DemoRequestController", "Error in GetFiscalYears", ex);
                 return StatusCode(StatusCodes.Status500InternalServerError, new ServiceResponse
                 {
                     isError = true,
@@ -128,6 +156,7 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in SubmitDemoRequest");
+                _fileLogger.LogError("DemoRequestController", "Error in SubmitDemoRequest", ex);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request");
             }
         }
@@ -150,6 +179,7 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in DemoReqData for request ID: {ReqId}", request?.reqId);
+                _fileLogger.LogError("DemoRequestController", $"Error in DemoReqData for request ID: {request?.reqId}", ex);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while fetching claim details.");
             }
         }
@@ -182,7 +212,30 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in ApproveRejectDemoRequest for request ID: {ReqId}", request?.ReqId);
+                _fileLogger.LogError("DemoRequestController", $"Error in ApproveRejectDemoRequest for request ID: {request?.ReqId}", ex);
                 return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpPost("UpdateDemoRequest")]
+        public async Task<IActionResult> UpdateDemoReq([FromBody] DemoReqUpdateModel request)
+        {
+            try
+            {
+                var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
+                var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
+
+                var result = await _demoService.UpdateDemoReqService(
+                    request,
+                    empNo
+                );
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("NewDealerActivityController", "Error in UpdateClaim", ex);
+                return StatusCode(500, "An error occurred while Updating the claim.");
             }
         }
 
@@ -210,7 +263,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                //Utility.ExcepLog(ex);
+                _fileLogger.LogError("DemoRequestController", "Error in GetDemoActualClaimList", ex);
                 return StatusCode(500, "An error occurred while fetching claim details.");
             }
         }
@@ -237,7 +290,7 @@ namespace DealerSetu.Controllers
             //{ nameof(DemoDocUploadModel.Affidavitfile), request.Affidavitfile },
             //{ nameof(DemoDocUploadModel.SaleDeedfile), request.SaleDeedfile }
         };
-
+                //-------------------------------------------------------------------------------------------------
                 // Check if all images are provided since they're all mandatory
                 foreach (var imageEntry in imagesToProcess)
                 {
@@ -248,7 +301,7 @@ namespace DealerSetu.Controllers
                         return StatusCode(400, $"{propertyName} is required");
                     }
                 }
-
+                //-------------------------------------------------------------------------------------------------
                 #region Validation For Image Files
                 // Validate each image
                 foreach (var imageEntry in imagesToProcess)
@@ -261,13 +314,14 @@ namespace DealerSetu.Controllers
                     }
                 }
                 #endregion
+                //-------------------------------------------------------------------------------------------------
 
                 // Create a DemoReqModel instance to receive the blob URLs
                 var demoReqModel = new DemoReqModel
                 {
                     DemoRequestId = request.RequestId,
                     Model = request.Model, // Set appropriate value if available
-                    DealerNo = empNo,
+                    EmpNo = empNo,
                     ChassisNo = request.ChassisNo,
                     EngineNo = request.EngineNo,
                     DateOfBilling = request.DateOfBilling,
@@ -306,6 +360,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _fileLogger.LogError("DemoRequestController", "Error in AddUpdateBasicClaim", ex);
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
@@ -331,7 +386,7 @@ namespace DealerSetu.Controllers
             { nameof(DemoDocUploadModel.Affidavitfile), request.Affidavitfile },
             { nameof(DemoDocUploadModel.SaleDeedfile), request.SaleDeedfile }
         };
-
+                //-------------------------------------------------------------------------------------------------
                 // Check if all images are provided since they're all mandatory
                 foreach (var imageEntry in imagesToProcess)
                 {
@@ -355,13 +410,13 @@ namespace DealerSetu.Controllers
                     }
                 }
                 #endregion
-
+                //-------------------------------------------------------------------------------------------------
                 // Create a DemoReqModel instance to receive the blob URLs
                 var demoReqModel = new DemoReqModel
                 {
                     DemoRequestId = request.RequestId,
                     //Model = request.Model, // Set appropriate value if available
-                    DealerNo = empNo,
+                    EmpNo = empNo,
                     //ChassisNo = request.ChassisNo,
                     //EngineNo = request.EngineNo,
                     //DateOfBilling = request.DateOfBilling,
@@ -417,9 +472,11 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _fileLogger.LogError("DemoRequestController", "Error in AddUpdateAllClaim", ex);
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
+
         [HttpPost("GetDemoTractorDoc")]
         public async Task<IActionResult> DemoTractorDoc([FromBody] DemoTractorDocReq request)
         {
@@ -441,15 +498,44 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                //Utility.ExcepLog(ex);
+                _fileLogger.LogError("DemoRequestController", "Error in DemoTractorDoc", ex);
                 return StatusCode(500, "An error occurred while fetching claim details.");
             }
         }
 
 
+        [HttpPost("ApproveRejectDemoClaim")]
+        public async Task<IActionResult> ApproveRejectDemoClaim ([FromBody] DemoTractorApproveRejectRequest request)
+        {
+            try
+            {
+                var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
+                var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
 
+                if (string.IsNullOrEmpty(empNo) || string.IsNullOrEmpty(roleId))
+                {
+                    return Unauthorized("User not authenticated or missing required claims");
+                }
 
+                var filter = new FilterModel
+                {
+                    EmpNo = empNo,
+                    RoleId = roleId,
+                    ReqId = request.ReqId,
+                    IsApproved = request.IsApproved,
+                    RejectRemarks = request.RejectRemarks
+                };
 
+                var result = await _demoService.DemoTractorApproveRejectClaimService(filter);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in ApproveRejectDemoRequest for request ID: {ReqId}", request?.ReqId);
+                _fileLogger.LogError("DemoRequestController", $"Error in ApproveRejectDemoClaim for request ID: {request?.ReqId}", ex);
+                return BadRequest(ex.Message);
+            }
+        }
 
         private FilterModel CreateFilterModel(DemoTractorRequestModel request)
         {

@@ -21,14 +21,14 @@ namespace DealerSetu_Data.Models.RequestModels
         //public string DateOfBilling { get; set; }
         //public IFormFile InvoiceFile { get; set; }
         //public IFormFile RCFile { get; set; }
-        public IFormFile FileSale { get; set; }
-        public IFormFile FileTractor { get; set; }
-        public IFormFile FilePicture { get; set; }
-        public IFormFile FilePicTractor { get; set; }
+        public IFormFile? FileSale { get; set; }
+        public IFormFile? FileTractor { get; set; }
+        public IFormFile? FilePicture { get; set; }
+        public IFormFile? FilePicTractor { get; set; }
         //public IFormFile InsuranceFile { get; set; }
-        public IFormFile LogDemonsFile { get; set; }
-        public IFormFile Affidavitfile { get; set; }
-        public IFormFile SaleDeedfile { get; set; }
+        public IFormFile? LogDemonsFile { get; set; }
+        public IFormFile? Affidavitfile { get; set; }
+        public IFormFile? SaleDeedfile { get; set; }
         //public string FileSaleExt { get; set; }
         //public string FileTractorExt { get; set; }
         //public string FilePictureExt { get; set; }

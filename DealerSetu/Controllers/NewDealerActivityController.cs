@@ -18,6 +18,7 @@ namespace DealerSetu.Controllers
         private readonly JwtHelper _jwtHelper;
         private readonly ValidationHelper _validationHelper;
         private readonly Utility _utility;
+        private readonly FileLoggerService _logger;
         private const long MaxFileSize = 20 * 1024 * 1024; // 20 MB
 
 
@@ -36,6 +37,7 @@ namespace DealerSetu.Controllers
             _utility = utility;
             _validationHelper = validationHelper;
             _fileValidationService = fileValidationService;
+            _logger = new FileLoggerService();
         }
 
         [HttpPost("NewDealerActivity")]
@@ -69,6 +71,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError("NewDealerActivityController", "Error in NewDealerActivityApproved", ex);
                 return StatusCode(500, "An error occurred while processing your request.");
             }
         }
@@ -101,6 +104,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError("NewDealerActivityController", "Error in NewDealerActivityPending", ex);
                 return StatusCode(500, "An error occurred while processing your request.");
             }
         }
@@ -118,8 +122,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                // Use a proper logging framework
-                Console.WriteLine($"Error in Controller: {ex.Message}");
+                _logger.LogError("NewDealerActivityController", "Error in GetDealerData", ex);
                 return StatusCode(500, "An error occurred while processing your request.");
             }
         }
@@ -140,6 +143,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError("NewDealerActivityController", "Error in DealerStates", ex);
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
@@ -170,7 +174,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                //Utility.ExcepLog(ex);
+                _logger.LogError("NewDealerActivityController", "Error in SubmitClaim", ex);
                 return StatusCode(500, "An error occurred while submitting the claim.");
             }
         }
@@ -193,7 +197,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                //Utility.ExcepLog(ex);
+                _logger.LogError("NewDealerActivityController", "Error in UpdateClaim", ex);
                 return StatusCode(500, "An error occurred while Updating the claim.");
             }
         }
@@ -212,7 +216,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                //Utility.ExcepLog(ex);
+                _logger.LogError("NewDealerActivityController", "Error in GetClaimDetails", ex);
                 return StatusCode(500, "An error occurred while fetching claim details.");
             }
         }
@@ -237,14 +241,14 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                //_logger.LogError(ex, "Error in ApproveRejectClaim");
+                _logger.LogError("NewDealerActivityController", "Error in ApproveRejectClaim", ex);
                 return BadRequest(ex.Message);
             }
         }
-        
-        
+
+
         //*******************************************ACTUAL CLAIM APIS*****************************************
-        
+
         [HttpPost("AddActualClaim")]
         public async Task<IActionResult> AddUpdateClaim([FromForm] ActualClaimAddUpdateRequest request)
         {
@@ -311,6 +315,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError("NewDealerActivityController", "Error in AddUpdateClaim", ex);
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
@@ -326,7 +331,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                //Utility.ExcepLog(ex);
+                _logger.LogError("NewDealerActivityController", "Error in GetActualClaimDetails", ex);
                 return StatusCode(500, "An error occurred while fetching claim details.");
             }
         }
@@ -352,7 +357,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                //Utility.ExcepLog(ex);
+                _logger.LogError("NewDealerActivityController", "Error in GetActualClaimList", ex);
                 return StatusCode(500, "An error occurred while fetching claim details.");
             }
         }
@@ -370,7 +375,7 @@ namespace DealerSetu.Controllers
                 {
                     EmpNo = empNo,
                     RoleId = roleId,
-                    ActivityId= request.ActivityId,
+                    ActivityId = request.ActivityId,
                     IsApproved = request.IsApproved,
                     RejectRemarks = request.RejectRemarks
 
@@ -382,11 +387,11 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                //_logger.LogError(ex, "Error in ApproveRejectClaim");
+                _logger.LogError("NewDealerActivityController", "Error in ApproveRejectActualClaim", ex);
                 return BadRequest(ex.Message);
             }
         }
-        
+
         [HttpPost("AddRemarks")]
         public async Task<IActionResult> AddActualRemarks([FromBody] AddActualRemarkModel request)
         {
@@ -399,7 +404,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                //Utility.ExcepLog(ex);
+                _logger.LogError("NewDealerActivityController", "Error in AddActualRemarks", ex);
                 return StatusCode(500, "An error occurred while fetching claim details.");
             }
         }

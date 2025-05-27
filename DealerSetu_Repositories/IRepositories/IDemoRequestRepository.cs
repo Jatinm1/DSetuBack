@@ -13,6 +13,7 @@ namespace DealerSetu_Repositories.IRepositories
     {
         Task<(List<DemoTractorResponseModel> DemoTractorList, int TotalCount)> DemoTractorApprovedRepo(FilterModel filter, int pageIndex, int pageSize);
         Task<(List<DemoTractorResponseModel> PendingDemoTractorList, int TotalCount)> DemoTractorPendingRepo(FilterModel filter, int pageIndex, int pageSize);
+        Task<(List<DemoTractorResponseModel> PendingClaimUploadList, int TotalCount)> DemoTractorPendingClaimRepo(FilterModel filter, int pageIndex, int pageSize);
         Task<List<FYearModel>> FiscalYearsRepo();
         Task<int> SubmitDemoReqRepo(DemoReqSubmissionModel request, string empNo);
         Task<DemoReqModel> DemoReqDataRepo(int reqId);
@@ -22,6 +23,8 @@ namespace DealerSetu_Repositories.IRepositories
         Task<int> AddBasicDemoActualClaimRepo(DemoReqModel docModel);
         Task<int> AddAllDemoActualClaimRepo(DemoReqModel docModel);
         Task<List<DemoReqModel>> GetDemoTractorDoc(FilterModel filter);
+        Task<string> UpdateDemoReqRepo(DemoReqUpdateModel request, string empNo);
+        Task<int> DemoTractorApproveRejectClaimRepo(FilterModel filter);
 
     }
 }

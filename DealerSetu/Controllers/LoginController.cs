@@ -7,6 +7,7 @@ using System.Text.Json;
 using DealerSetu_Data.Models.HelperModels;
 using DealerSetu_Data.Models.RequestModels;
 using DealerSetu_Data.Models.ViewModels;
+using DealerSetu.Repository.Common;
 
 namespace DealerSetu.Controllers
 {
@@ -20,6 +21,8 @@ namespace DealerSetu.Controllers
         private readonly RSAEncryptionService _rsaKeyService;
         private readonly ValidationHelper _validationHelper;
         private readonly RecaptchaService _recaptchaService;
+        private readonly FileLoggerService _logger;
+
         public LoginController(ILoginService loginService, IConfiguration configuration, JwtHelper jwtHelper, RSAEncryptionService rsaKeyService, ValidationHelper validationHelper, RecaptchaService recaptchaService)
         {
             _loginService = loginService;
@@ -28,6 +31,7 @@ namespace DealerSetu.Controllers
             _rsaKeyService = rsaKeyService;
             _validationHelper = validationHelper;
             _recaptchaService = recaptchaService;
+            _logger = new FileLoggerService();
         }
 
 
@@ -52,8 +56,9 @@ namespace DealerSetu.Controllers
                     decryptedKeyString = _rsaKeyService.DecryptRSA(payload.EncryptedKey);
                     decryptedIvString = _rsaKeyService.DecryptRSA(payload.EncryptedIV);
                 }
-                catch (CryptographicException)
+                catch (CryptographicException ex)
                 {
+                    _logger.LogError("LoginUser", "Failed to decrypt key/IV", ex);
                     return BadRequest(new ServiceResponse
                     {
                         Status = "Failure",
@@ -92,11 +97,10 @@ namespace DealerSetu.Controllers
                     var result = await _loginService.Login_Service(loginModel); // Local
                     //var result = await _loginService.LDAPLoginService(loginModel); // LDAP
                     return Ok(result);
-
-
                 }
                 catch (Exception ex)
                 {
+                    _logger.LogError("LoginUser", "Failed to process login data", ex);
                     return BadRequest(new ServiceResponse
                     {
                         Status = "Failure",
@@ -105,8 +109,9 @@ namespace DealerSetu.Controllers
                     });
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError("LoginUser", "An internal server error occurred", ex);
                 return StatusCode(500, new ServiceResponse
                 {
                     Status = "Failure",
@@ -142,6 +147,7 @@ namespace DealerSetu.Controllers
         //    catch (Exception ex)
         //    {
         //        // Log error
+        //        _logger.LogError("LoginUser", "Error processing login request", ex);
         //        return StatusCode(500, ex.Message);
         //    }
         //}
@@ -149,13 +155,26 @@ namespace DealerSetu.Controllers
         [HttpPost("LogoutUser")]
         public async Task<IActionResult> LogOut(LogoutModel logoutModel)
         {
-            var result = await _loginService.LogOutService(logoutModel.empNo);
-            if (result.Code != "200")
-                return BadRequest(new { message = result.Message });
+            try
+            {
+                var result = await _loginService.LogOutService(logoutModel.empNo);
+                if (result.Code != "200")
+                    return BadRequest(new { message = result.Message });
 
-            Response.Cookies.Delete("jwt");
-            Response.Cookies.Delete("isAuthenticated");
-            return Ok(result);
+                Response.Cookies.Delete("jwt");
+                Response.Cookies.Delete("isAuthenticated");
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("LogoutUser", "Error during logout process", ex);
+                return StatusCode(500, new ServiceResponse
+                {
+                    Status = "Failure",
+                    Code = "500",
+                    Message = "An error occurred during logout"
+                });
+            }
         }
 
         //************************************ORIGINAL HEARTBEAT IMPLEMENTATION************************************
@@ -170,6 +189,7 @@ namespace DealerSetu.Controllers
         //    }
         //    catch (Exception ex)
         //    {
+        //        _logger.LogError("HeartBeat", "Error processing heartbeat", ex);
         //        return StatusCode(500, ex.Message);
         //    }
         //}
@@ -199,6 +219,7 @@ namespace DealerSetu.Controllers
         //    }
         //    catch (Exception ex)
         //    {
+        //        _logger.LogError("PendingCount", "An unexpected error occurred", ex);
         //        return StatusCode(500, new ServiceResponse
         //        {
         //            isError = true,
@@ -216,36 +237,32 @@ namespace DealerSetu.Controllers
         public async Task<ActionResult<bool>> LoginHeartBeat([FromBody] HeartbeatRequestModel request)
         {
             try
-            {                         
+            {
                 var result = await _loginService.UpdateLoginHeartbeatService(request.EmpNo);
                 return Ok(result);
             }
             catch (Exception ex)
             {
+                _logger.LogError("LoginHeartBeat", "Error updating login heartbeat", ex);
                 return StatusCode(500, ex.Message);
             }
         }
 
         [HttpPost("RegularHeartBeat")]
-
         //[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-
         [Consumes("application/json")] // Optional, since there's no body
-
         public async Task<ActionResult<bool>> RegularHeartBeat([FromBody] HeartbeatRequestModel request)
         {
             try
-            {               
+            {
                 var result = await _loginService.UpdateRegularHeartbeatService(request.EmpNo);
                 return Ok(result);
             }
             catch (Exception ex)
-
             {
+                _logger.LogError("RegularHeartBeat", "Error updating regular heartbeat", ex);
                 return StatusCode(500, ex.Message);
             }
-
         }
-
     }
 }

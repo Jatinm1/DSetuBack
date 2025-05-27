@@ -19,9 +19,9 @@ namespace DealerSetu_Data.Models.RequestModels
         public string ChassisNo { get; set; }
         public string EngineNo { get; set; }
         public string DateOfBilling { get; set; }
-        public IFormFile InvoiceFile { get; set; }
-        public IFormFile RCFile { get; set; }
-        public IFormFile InsuranceFile { get; set; }
+        public IFormFile? InvoiceFile { get; set; }
+        public IFormFile? RCFile { get; set; }
+        public IFormFile? InsuranceFile { get; set; }
         //public IFormFile FileSale { get; set; }
         //public IFormFile FileTractor { get; set; }
         //public IFormFile FilePicture { get; set; }

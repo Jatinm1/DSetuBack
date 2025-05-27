@@ -17,6 +17,7 @@ namespace DealerSetu.Controllers
         private readonly Utility _utility;
         private readonly JwtHelper _jwtHelper;
         private readonly IFileValidationService _fileValidationService;
+        private readonly FileLoggerService _logger;
 
         public MasterController(
             IMasterService masterService,
@@ -34,6 +35,7 @@ namespace DealerSetu.Controllers
             _utility = utility;
             _jwtHelper = jwtHelper;
             _fileValidationService = fileValidationService;
+            _logger = new FileLoggerService();
         }
 
         [HttpGet("GetEmployeeList")]
@@ -52,6 +54,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError("GetEmployeeList", "Error retrieving employee list", ex);
                 return StatusCode(500, CreateErrorResponse(ex.Message));
             }
         }
@@ -72,6 +75,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError("GetRoles", "Error retrieving roles", ex);
                 return StatusCode(500, CreateErrorResponse(ex.Message));
             }
         }
@@ -102,10 +106,12 @@ namespace DealerSetu.Controllers
             }
             catch (UnauthorizedAccessException ex)
             {
+                _logger.LogError("DownloadFormats", "Unauthorized access to file", ex);
                 return StatusCode(403, new { error = ex.Message });
             }
             catch (Exception ex)
             {
+                _logger.LogError("DownloadFormats", "Error generating download URL", ex);
                 return StatusCode(500, new { error = "An unexpected error occurred.", details = ex.Message });
             }
         }
@@ -131,6 +137,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError("UploadEmployeeExcelFile", "Error processing employee excel file", ex);
                 return StatusCode(500, new
                 {
                     success = false,
@@ -161,6 +168,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError("UploadDealerExcelFile", "Error processing dealer excel file", ex);
                 return StatusCode(500, new
                 {
                     success = false,
@@ -192,6 +200,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError("GetDealerList", "Error retrieving dealer list", ex);
                 return StatusCode(500, CreateErrorResponse(ex.Message));
             }
         }
@@ -235,6 +244,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError("UpdateEmployeeDetails", "Error updating employee details", ex);
                 return StatusCode(500, new { error = "An unexpected error occurred.", details = ex.Message });
             }
         }
@@ -254,6 +264,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError("DeleteUser", "Error deleting user", ex);
                 return StatusCode(500, new { error = "An unexpected error occurred.", details = ex.Message });
             }
         }
@@ -292,6 +303,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError("UpdateDealerDetails", "Error updating dealer details", ex);
                 return StatusCode(500, new { error = "An unexpected error occurred.", details = ex.Message });
             }
         }

@@ -5,7 +5,7 @@
         public int Id { get; set; }
         public int DemoRequestId { get; set; }
         public string RequestNo { get; set; }
-        public string DealerNo { get; set; }
+        public string EmpNo { get; set; }
         public string DealerLocation { get; set; }
         public string ModelRequested { get; set; }
         public string Reason { get; set; }
@@ -41,7 +41,7 @@
         public string Affidavit { get; set; }
         public string SaleDeed { get; set; }
         public string Message { get; set; }
-        public int HpCategoryId { get; set; }
+        public int HpCategory { get; set; }
         public int Implementrequired { get; set; }
         public int ImplementId { get; set; }
 

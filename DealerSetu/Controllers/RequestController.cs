@@ -16,13 +16,15 @@ namespace DealerSetu.Controllers
         private readonly JwtHelper _jwtHelper;
         private readonly ValidationHelper _validationHelper;
         private readonly Utility _utility;
+        private readonly FileLoggerService _logger;
 
-        public RequestController(IRequestService requestService, JwtHelper jwtHelper, ValidationHelper validationHelper,Utility utility)
+        public RequestController(IRequestService requestService, JwtHelper jwtHelper, ValidationHelper validationHelper, Utility utility)
         {
             _requestService = requestService;
             _jwtHelper = jwtHelper;
             _utility = utility;
             _validationHelper = validationHelper;
+            _logger = new FileLoggerService();
         }
 
         /// <summary>
@@ -33,7 +35,7 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                var response = await  _requestService.RequestTypeFilterService();
+                var response = await _requestService.RequestTypeFilterService();
 
                 if (response.isError == true)
                 {
@@ -44,6 +46,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError("RequestTypeFilter", "Error retrieving request type filters", ex);
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
@@ -72,6 +75,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError("HPCategoryFilter", "Error retrieving HP category filters", ex);
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
@@ -89,7 +93,6 @@ namespace DealerSetu.Controllers
         {
             try
             {
-
                 if (request == null)
                 {
                     return BadRequest(_utility.CreateErrorResponse(
@@ -128,10 +131,9 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError("GetRequestList", "Error retrieving request list", ex);
                 return StatusCode(500, "An error occurred while processing your request.");
             }
-
-
         }
 
         /// <summary>
@@ -172,6 +174,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError("SubmitRequest", "Error submitting request", ex);
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }

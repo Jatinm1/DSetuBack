@@ -16,6 +16,7 @@ namespace DealerSetu.Controllers
         private readonly IWhiteVillageService _whiteVillageService;
         private readonly JwtHelper _jwtHelper;
         private readonly Utility _utility;
+        private readonly FileLoggerService _logger;
 
         public WhiteListingController(
             IWhiteVillageService whiteVillageService,
@@ -25,6 +26,7 @@ namespace DealerSetu.Controllers
             _whiteVillageService = whiteVillageService;
             _jwtHelper = jwtHelper;
             _utility = utility;
+            _logger = new FileLoggerService();
         }
 
         /// <summary>
@@ -38,9 +40,9 @@ namespace DealerSetu.Controllers
                 var result = await _whiteVillageService.GetWhiteListingService();
                 return Ok(result);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Log exception (if logging is implemented)
+                _logger.LogError("WhiteListingController", "Error in GetWhiteListing", ex);
                 return StatusCode(500, new { message = "An error occurred while processing your request." });
             }
         }
@@ -51,11 +53,19 @@ namespace DealerSetu.Controllers
         [HttpPost("UploadWhiteVillageFile")]
         public async Task<IActionResult> UploadWhiteVillageFile(IFormFile excelFile, string stateId)
         {
-            var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
+            try
+            {
+                var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
 
-            // Call service to handle the file upload
-            var result = await _whiteVillageService.UploadWhiteVillageFileService(excelFile, stateId, empNo);
-            return Ok(result);
+                // Call service to handle the file upload
+                var result = await _whiteVillageService.UploadWhiteVillageFileService(excelFile, stateId, empNo);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("WhiteListingController", "Error in UploadWhiteVillageFile", ex);
+                return StatusCode(500, new { message = "An error occurred while uploading the white village file." });
+            }
         }
 
         /// <summary>
@@ -66,7 +76,7 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                var response =  await _whiteVillageService.GetStateListService();
+                var response = await _whiteVillageService.GetStateListService();
 
                 if (response.isError == true)
                 {
@@ -77,6 +87,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError("WhiteListingController", "Error in GetRoles", ex);
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
@@ -118,10 +129,12 @@ namespace DealerSetu.Controllers
             }
             catch (UnauthorizedAccessException ex)
             {
+                _logger.LogError("WhiteListingController", "Unauthorized access in DownloadFormats", ex);
                 return StatusCode(403, new { error = ex.Message });
             }
             catch (Exception ex)
             {
+                _logger.LogError("WhiteListingController", "Error in DownloadFormats", ex);
                 return StatusCode(500, new { error = "An unexpected error occurred.", details = ex.Message });
             }
         }
@@ -137,6 +150,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError("WhiteListingController", "Error in ListFiles", ex);
                 return StatusCode(500, new { error = "An unexpected error occurred.", details = ex.Message });
             }
         }
@@ -170,10 +184,12 @@ namespace DealerSetu.Controllers
             }
             catch (UnauthorizedAccessException ex)
             {
+                _logger.LogError("WhiteListingController", "Unauthorized access in DeleteFile", ex);
                 return StatusCode(403, new { error = ex.Message });
             }
             catch (Exception ex)
             {
+                _logger.LogError("WhiteListingController", "Error in DeleteFile", ex);
                 return StatusCode(500, new { error = "An unexpected error occurred.", details = ex.Message });
             }
         }

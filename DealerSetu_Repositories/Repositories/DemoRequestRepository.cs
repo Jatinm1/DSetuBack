@@ -6,6 +6,7 @@ using DealerSetu_Repositories.IRepositories;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -109,6 +110,46 @@ namespace DealerSetu_Repositories.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in DemoTractorPendingRepo: {Message}", ex.Message);
+                throw;
+            }
+        }
+
+        public async Task<(List<DemoTractorResponseModel> PendingClaimUploadList, int TotalCount)> DemoTractorPendingClaimRepo(
+    FilterModel filter, int pageIndex, int pageSize)
+        {
+            _logger.LogInformation("Fetching view claim upload pending list with filter parameters");
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                var parameters = new DynamicParameters();
+                parameters.Add("@EmpNo", filter.EmpNo);
+                parameters.Add("@RoleId", filter.RoleId);
+                parameters.Add("@RequestNo", filter.RequestNo);
+                parameters.Add("@FromDate", filter.From);
+                parameters.Add("@ToDate", filter.To);
+                parameters.Add("@PageIndex", pageIndex);
+                parameters.Add("@PageSize", pageSize);
+
+                using var multi = await connection.QueryMultipleAsync(
+                    "sp_DEMOTRAC_PendingClaimList",
+                    parameters,
+                    commandType: CommandType.StoredProcedure);
+
+                var pendingClaimUploadList = (await multi.ReadAsync<DemoTractorResponseModel>()).ToList();
+                var totalCount = (await multi.ReadAsync<int>()).FirstOrDefault();
+
+                return (pendingClaimUploadList, totalCount);
+            }
+            catch (SqlException ex)
+            {
+                _logger.LogError(ex, "SQL error in GetViewClaimUploadPendingListAsync: {Message}", ex.Message);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in GetViewClaimUploadPendingListAsync: {Message}", ex.Message);
                 throw;
             }
         }
@@ -236,6 +277,42 @@ namespace DealerSetu_Repositories.Repositories
             }
         }
 
+        public async Task<string> UpdateDemoReqRepo(DemoReqUpdateModel request, string empNo)
+        {
+            try
+            {
+                using (var connection = new SqlConnection(_connectionString))
+                {
+
+                    var parameters = new DynamicParameters();
+                    parameters.Add("@RequestNo", request.RequestNo);
+                    parameters.Add("@EmpNo", empNo);
+                    parameters.Add("@ModelRequested", request.ModelRequested);
+                    parameters.Add("@Reason", request.Reason);
+                    parameters.Add("@SchemeType", request.SchemeType);
+                    parameters.Add("@SpecialVariant", request.SpecialVariant);
+                    parameters.Add("@ImplementRequired", request.ImplementRequired);
+                    parameters.Add("@ImplementId", request.ImplementId);
+                    parameters.Add("@Message", request.Message);
+                    parameters.Add("@HpCategoryId", request.HpCategoryId);
+
+
+                    string reqNo = await connection.QuerySingleAsync<string>(
+                        "sp_DEMOTRAC_UpdateReq",
+                        parameters,
+                        commandType: CommandType.StoredProcedure
+                    );
+
+                    return reqNo;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log exception
+                throw;
+            }
+        }
+
         public async Task<List<DemoReqModel>> DemoActualClaimListRepo(FilterModel filter)
         {
             try
@@ -276,7 +353,7 @@ namespace DealerSetu_Repositories.Repositories
                 parameters.Add("@InvoiceFile", docModel.InvoiceFile);
                 parameters.Add("@RCFile", docModel.RCFile);
                 parameters.Add("@InsuranceFile", docModel.InsuranceFile);
-                parameters.Add("@EmpNo", docModel.DealerNo);
+                parameters.Add("@EmpNo", docModel.EmpNo);
                 parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
                 using (var connection = new SqlConnection(_connectionString))
@@ -307,7 +384,7 @@ namespace DealerSetu_Repositories.Repositories
                 parameters.Add("@LogDemonsFile", docModel.LogDemons);
                 parameters.Add("@AffidavitFile", docModel.Affidavit);
                 parameters.Add("@SaleDeedFile", docModel.SaleDeed);
-                parameters.Add("@EmpNo", docModel.DealerNo);
+                parameters.Add("@EmpNo", docModel.EmpNo);
                 parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
                 using (var connection = new SqlConnection(_connectionString))
@@ -347,6 +424,41 @@ namespace DealerSetu_Repositories.Repositories
             catch (Exception ex)
             {
                 //Utility.ExcepLog(ex);
+                throw;
+            }
+        }
+
+        public async Task<int> DemoTractorApproveRejectClaimRepo(FilterModel filter)
+        {
+            _logger.LogInformation("Processing approval/rejection for request ID {ReqId}", filter.ReqId);
+
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                var parameters = new DynamicParameters();
+                parameters.Add("@ReqId", filter.ReqId);
+                parameters.Add("@IsApproved", filter.IsApproved);
+                parameters.Add("@EmpNo", filter.EmpNo);
+                parameters.Add("@RoleId", filter.RoleId);
+                parameters.Add("@RejectRemarks", filter.RejectRemarks ?? string.Empty);
+                parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                await connection.ExecuteAsync(
+                    "sp_DEMOTRAC_ApproveRejectClaim",
+                    parameters,
+                    commandType: CommandType.StoredProcedure
+                );
+
+                var result = parameters.Get<int>("@Result");
+                _logger.LogInformation("Approval/rejection process result: {Result}", result);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in DemoTractorApproveRejectClaimRepo: {Message}", ex.Message);
                 throw;
             }
         }
