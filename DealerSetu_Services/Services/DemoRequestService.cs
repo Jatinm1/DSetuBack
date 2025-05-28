@@ -427,6 +427,47 @@ namespace DealerSetu_Services.Services
             }
         }
 
+        public async Task<ServiceResponse> AddDemoRemarksService(int requestId, string remarks)
+        {
+            try
+            {
+                if (remarks.Any() || remarks != null)
+                {
+
+                    if (_fileValidationService.ContainsMaliciousPatterns(remarks))
+                        return new ServiceResponse
+                        {
+                            isError = true,
+                            result = null,
+                            Status = "Error",
+                            Message = "Remarks contains potentially malicious content",
+                            Code = "400"
+                        };
+
+                }
+                var DemoReqId = await _demoRequestRepository.AddDemoRemarkRepo(requestId, remarks);
+                return new ServiceResponse
+                {
+                    isError = false,
+                    result = DemoReqId,
+                    Message = "Remarks Added successfully",
+                    Status = "Success",
+                    Code = "200"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ServiceResponse
+                {
+                    isError = true,
+                    Error = ex.Message,
+                    Message = "Error adding Remarks",
+                    Status = "Error",
+                    Code = "500"
+                };
+            }
+        }
+
         #region Helper Methods
 
         private void ValidateFilterParams(FilterModel filter, int pageIndex, int pageSize)

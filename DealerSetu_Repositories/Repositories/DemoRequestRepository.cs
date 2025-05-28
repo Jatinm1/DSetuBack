@@ -464,5 +464,32 @@ namespace DealerSetu_Repositories.Repositories
         }
 
 
+        public async Task<int> AddDemoRemarkRepo(int requestId, string remarks)
+        {
+            try
+            {                
+                var parameters = new DynamicParameters();
+                parameters.Add("@Id", requestId);
+                parameters.Add("@Remarks", remarks);
+
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    await connection.OpenAsync();
+                    int result = await connection.QuerySingleAsync<int>(
+                        "sp_DEMOTRAC_AddRemarks",
+                        parameters,
+                        commandType: CommandType.StoredProcedure);
+                    return result;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log exception (replace with your logging mechanism)
+                // Utility.ExcepLog(ex);
+                throw;
+            }
+        }
+
+
     }
 }

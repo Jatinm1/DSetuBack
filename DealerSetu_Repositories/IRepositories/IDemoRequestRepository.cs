@@ -26,5 +26,7 @@ namespace DealerSetu_Repositories.IRepositories
         Task<string> UpdateDemoReqRepo(DemoReqUpdateModel request, string empNo);
         Task<int> DemoTractorApproveRejectClaimRepo(FilterModel filter);
 
+        Task<int> AddDemoRemarkRepo(int requestId, string remarks);
+
     }
 }

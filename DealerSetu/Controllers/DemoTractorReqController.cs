@@ -537,6 +537,23 @@ namespace DealerSetu.Controllers
             }
         }
 
+        [HttpPost("AddDemoRemarks")]
+        public async Task<IActionResult> AddDemoRemarks([FromBody] AddDemoTracRemarksModel request)
+        {
+            try
+            {
+                var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
+                var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
+                var result = await _demoService.AddDemoRemarksService(request.RequestId, request.Remarks);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("DemoTractorReqController", "Error in AddDemoRemarks", ex);
+                return StatusCode(500, "An error occurred while fetching claim details.");
+            }
+        }
+
         private FilterModel CreateFilterModel(DemoTractorRequestModel request)
         {
             return new FilterModel
