@@ -464,13 +464,21 @@ namespace DealerSetu_Repositories.Repositories
         }
 
 
-        public async Task<int> AddDemoRemarkRepo(int requestId, string remarks)
+        public async Task<int> AddActualDemoRemarkRepo(AddDemoTracRemarksModel request)
         {
             try
-            {                
+            {
+                // Parse the date string to DateTime
+                if (!DateTime.TryParseExact(request.RemarksDate, "MM/dd/yyyy",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedDate))
+                {
+                    throw new ArgumentException("Invalid date format. Expected MM/dd/yyyy format.");
+                }
+
                 var parameters = new DynamicParameters();
-                parameters.Add("@Id", requestId);
-                parameters.Add("@Remarks", remarks);
+                parameters.Add("@Id", request.RequestId);
+                parameters.Add("@Remarks", request.Remarks);
+                parameters.Add("@RemarksDate", parsedDate); // Pass parsed DateTime
 
                 using (var connection = new SqlConnection(_connectionString))
                 {

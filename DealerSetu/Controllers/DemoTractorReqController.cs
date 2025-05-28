@@ -544,7 +544,7 @@ namespace DealerSetu.Controllers
             {
                 var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
                 var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
-                var result = await _demoService.AddDemoRemarksService(request.RequestId, request.Remarks);
+                var result = await _demoService.AddDemoRemarksService(request);
                 return Ok(result);
             }
             catch (Exception ex)

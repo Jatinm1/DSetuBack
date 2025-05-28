@@ -25,8 +25,7 @@ namespace DealerSetu_Repositories.IRepositories
         Task<List<DemoReqModel>> GetDemoTractorDoc(FilterModel filter);
         Task<string> UpdateDemoReqRepo(DemoReqUpdateModel request, string empNo);
         Task<int> DemoTractorApproveRejectClaimRepo(FilterModel filter);
-
-        Task<int> AddDemoRemarkRepo(int requestId, string remarks);
+        Task<int> AddActualDemoRemarkRepo(AddDemoTracRemarksModel request);
 
     }
 }

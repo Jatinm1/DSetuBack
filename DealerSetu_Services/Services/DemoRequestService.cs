@@ -427,14 +427,14 @@ namespace DealerSetu_Services.Services
             }
         }
 
-        public async Task<ServiceResponse> AddDemoRemarksService(int requestId, string remarks)
+        public async Task<ServiceResponse> AddDemoRemarksService(AddDemoTracRemarksModel request)
         {
             try
             {
-                if (remarks.Any() || remarks != null)
+                if (request.Remarks.Any() || request.Remarks != null)
                 {
 
-                    if (_fileValidationService.ContainsMaliciousPatterns(remarks))
+                    if (_fileValidationService.ContainsMaliciousPatterns(request.Remarks))
                         return new ServiceResponse
                         {
                             isError = true,
@@ -445,7 +445,21 @@ namespace DealerSetu_Services.Services
                         };
 
                 }
-                var DemoReqId = await _demoRequestRepository.AddDemoRemarkRepo(requestId, remarks);
+                if (request.RemarksDate.Any() || request.RemarksDate != null)
+                {
+
+                    if (_fileValidationService.ContainsMaliciousPatterns(request.RemarksDate))
+                        return new ServiceResponse
+                        {
+                            isError = true,
+                            result = null,
+                            Status = "Error",
+                            Message = "Remarks contains potentially malicious content",
+                            Code = "400"
+                        };
+
+                }
+                var DemoReqId = await _demoRequestRepository.AddActualDemoRemarkRepo(request);
                 return new ServiceResponse
                 {
                     isError = false,

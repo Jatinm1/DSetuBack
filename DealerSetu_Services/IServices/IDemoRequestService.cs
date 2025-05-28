@@ -23,7 +23,7 @@ namespace DealerSetu_Services.IServices
         Task<ServiceResponse> AddDemoActualClaimService(DemoReqModel request);
         Task<ServiceResponse> GetDemoTractorDocService(FilterModel filter);
         Task<ServiceResponse> DemoTractorApproveRejectClaimService(FilterModel filter);
-        Task<ServiceResponse> AddDemoRemarksService(int requestId, string remarks);
+        Task<ServiceResponse> AddDemoRemarksService(AddDemoTracRemarksModel request);
 
     }
 }

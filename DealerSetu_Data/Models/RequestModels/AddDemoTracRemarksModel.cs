@@ -10,6 +10,6 @@ namespace DealerSetu_Data.Models.RequestModels
     {
         public int RequestId { get; set; }
         public string Remarks { get; set; }
-
+        public string RemarksDate { get; set; }
     }
 }
