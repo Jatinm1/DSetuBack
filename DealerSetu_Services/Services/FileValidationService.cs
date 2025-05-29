@@ -7,6 +7,11 @@ using System.Data;
 using System.Web;
 using DealerSetu.Repository.Common;
 using DealerSetu_Data.Models.HelperModels;
+using Cloudmersive.APIClient.NET.VirusScan.Api;
+using Cloudmersive.APIClient.NET.VirusScan.Client;
+using Cloudmersive.APIClient.NET.VirusScan.Model;
+using System.Text;
+using System.Text.Json;
 
 namespace DealerSetu_Services.Services
 {
@@ -169,31 +174,76 @@ namespace DealerSetu_Services.Services
         //*****************************************************************************************************************************
 
 
+        //public async Task<ServiceResponse> ScanFileWithDefenderAsync(IFormFile file)
+        //{
+        //    var tempFilePath = Path.GetTempFileName();
+        //    try
+        //    {
+        //        using (var stream = new FileStream(tempFilePath, FileMode.Create))
+        //        {
+        //            await file.CopyToAsync(stream);
+        //        }
+
+        //        var scanResult = await ScanFileWithDefenderAsync(tempFilePath);
+        //        if (!scanResult.IsClean)
+        //        {
+        //            return CreateErrorResponse("Malicious file detected",
+        //                "MALICIOUS_FILE_DETECTED",
+        //                $"File is flagged as malicious by antivirus: {scanResult.Message}");
+        //        }
+
+        //        return CreateSuccessResponse(file);
+        //    }
+        //    finally
+        //    {
+        //        if (File.Exists(tempFilePath))
+        //        {
+        //            File.Delete(tempFilePath);
+        //        }
+        //    }
+        //}
+
         public async Task<ServiceResponse> ScanFileWithDefenderAsync(IFormFile file)
         {
             var tempFilePath = Path.GetTempFileName();
             try
             {
+                // Save IFormFile to temp file
                 using (var stream = new FileStream(tempFilePath, FileMode.Create))
                 {
                     await file.CopyToAsync(stream);
                 }
 
-                var scanResult = await ScanFileWithDefenderAsync(tempFilePath);
-                if (!scanResult.IsClean)
-                {
-                    return CreateErrorResponse("Malicious file detected",
-                        "MALICIOUS_FILE_DETECTED",
-                        $"File is flagged as malicious by antivirus: {scanResult.Message}");
-                }
+                // Set API Key
+                Configuration.Default.AddApiKey("Apikey", "05768ba4-1915-463b-8193-973daed585e0");
 
-                return CreateSuccessResponse(file);
+                var apiInstance = new ScanApi();
+                using (var fs = System.IO.File.OpenRead(tempFilePath))
+                {
+                    var result = apiInstance.ScanFile(fs);
+
+                    if (result.FoundViruses != null && result.FoundViruses.Count > 0)
+                    {
+                        // Extract virus names for message
+                        var virusNames = result.FoundViruses.Select(v => v.VirusName).ToList();
+                        var virusListString = string.Join(", ", virusNames);
+
+                        return CreateErrorResponse(
+                            "Malicious file detected",
+                            "MALICIOUS_FILE_DETECTED",
+                            $"Virus(es) found: {virusListString}"
+                        );
+                    }
+
+                    // Clean file
+                    return CreateSuccessResponse(file);
+                }
             }
             finally
             {
-                if (File.Exists(tempFilePath))
+                if (System.IO.File.Exists(tempFilePath))
                 {
-                    File.Delete(tempFilePath);
+                    System.IO.File.Delete(tempFilePath);
                 }
             }
         }
