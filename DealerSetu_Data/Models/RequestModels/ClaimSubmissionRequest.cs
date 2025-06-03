@@ -13,4 +13,11 @@ namespace DealerSetu_Data.Models.RequestModels
         public string DealerNo { get; set; }
         public List<ActivityModel> ActivityData { get; set; }
     }
+
+    public class ClaimUpdateRequest
+    {
+        public string RequestNo { get; set; }
+        public string DealerNo { get; set; }
+        public List<UpdateActivityModel> ActivityData { get; set; }
+    }
 }

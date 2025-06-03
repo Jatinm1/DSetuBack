@@ -27,6 +27,7 @@ namespace DealerSetu_Services.IServices
         Task<ServiceResponse> ApproveRejectActualClaimService(FilterModel filter);
         Task<ServiceResponse> ActualClaimListService(FilterModel filter);
         Task<ServiceResponse> AddActualClaimService(ActualClaimModel request);
+        Task<ServiceResponse> UpdateActualClaimService(ActualClaimUpdateModel request);
         Task<ServiceResponse> AddActualRemarksService(int claimId, string actualRemarks);
 
     }

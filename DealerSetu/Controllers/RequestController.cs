@@ -149,6 +149,12 @@ namespace DealerSetu.Controllers
                     return BadRequest(_utility.CreateErrorResponse(
                         "Invalid payload", "Request body cannot be null.", "400"));
                 }
+                if (request.RequestTypeId == "1" && string.IsNullOrWhiteSpace(request.HpCategory))
+                {
+                    return BadRequest(_utility.CreateErrorResponse(
+                        "Invalid payload", "HP Category is Required for Demo Tractor Request", "400"));
+                }
+
 
                 // Retrieve user details from JWT claims
                 var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");

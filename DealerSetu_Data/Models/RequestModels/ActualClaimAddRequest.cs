@@ -1,26 +1,24 @@
 ﻿using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace DealerSetu_Data.Models.RequestModels
 {
-    public class ActualClaimAddUpdateRequest
+    public class ActualClaimAddRequest
     {
-        [Required]
         public int ActivityId { get; set; }
-        public string ActualExpenses { get; set; }
+        public string? ActualExpenses { get; set; }
 
         public string? DateOfActivity { get; set; } = DateTime.Now.ToString();
 
-        public string CustomerContacted { get; set; }
+        public string? CustomerContacted { get; set; }
 
-        public string Enquiry { get; set; }
+        public string? Enquiry { get; set; }
 
-        public string Delivery { get; set; }
+        public string? Delivery { get; set; }
 
         // File uploads
         public IFormFile? Image1 { get; set; }

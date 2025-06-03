@@ -5,26 +5,62 @@ using DealerSetu_Repositories.IRepositories;
 using DealerSetu_Services.IServices;
 using Microsoft.Extensions.Configuration;
 using System.DirectoryServices;
+using System.ComponentModel.DataAnnotations;
 
 namespace DealerSetu_Services.Services
 {
+    /// <summary>
+    /// Service responsible for handling user authentication, login operations, and session management.
+    /// Supports both local/staging authentication and LDAP-based production authentication.
+    /// </summary>
     public class LoginService : ILoginService
     {
+        #region Private Fields
+
         private readonly ILoginRepository _loginRepo;
         private readonly IConfiguration _configuration;
         private readonly DealerSetu.Repository.Common.Utility _utility;
         private readonly JwtTokenGenerator _jwtTokenGenerator;
 
-        public LoginService(ILoginRepository loginRepo, JwtTokenGenerator jwtTokenGenerator, IConfiguration configuration, DealerSetu.Repository.Common.Utility utility)
+        #endregion
+
+        #region Constructor
+
+        /// <summary>
+        /// Initializes a new instance of the LoginService with required dependencies.
+        /// </summary>
+        /// <param name="loginRepo">Repository for login operations</param>
+        /// <param name="jwtTokenGenerator">Service for generating JWT tokens</param>
+        /// <param name="configuration">Application configuration</param>
+        /// <param name="utility">Utility service for common operations</param>
+        /// <exception cref="ArgumentNullException">Thrown when any required parameter is null</exception>
+        public LoginService(
+            ILoginRepository loginRepo,
+            JwtTokenGenerator jwtTokenGenerator,
+            IConfiguration configuration,
+            DealerSetu.Repository.Common.Utility utility)
         {
-            _loginRepo = loginRepo;
-            _jwtTokenGenerator = jwtTokenGenerator;
-            _configuration = configuration;
-            _utility = utility;
+            _loginRepo = loginRepo ?? throw new ArgumentNullException(nameof(loginRepo));
+            _jwtTokenGenerator = jwtTokenGenerator ?? throw new ArgumentNullException(nameof(jwtTokenGenerator));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _utility = utility ?? throw new ArgumentNullException(nameof(utility));
         }
 
-        public async Task<bool> isLDAPAuthAsync(string UserName, string Password)
+        #endregion
+
+        #region Public Methods
+
+        /// <summary>
+        /// Authenticates user credentials against LDAP directory service.
+        /// </summary>
+        /// <param name="userName">Username for LDAP authentication</param>
+        /// <param name="password">Password for LDAP authentication</param>
+        /// <returns>True if authentication is successful, false otherwise</returns>
+        public async Task<bool> isLDAPAuthAsync(string userName, string password)
         {
+            if (string.IsNullOrWhiteSpace(userName) || string.IsNullOrWhiteSpace(password))
+                return false;
+
             try
             {
                 // Get the current domain user (e.g., DOMAIN\username).
@@ -34,242 +70,298 @@ namespace DealerSetu_Services.Services
                 string[] paramsLogin = domainUser.Split('\\');
 
                 // Extract the domain name (e.g., DOMAIN)
-                string domainName = paramsLogin[0].ToString();
+                string domainName = paramsLogin.Length > 0 ? paramsLogin[0] : string.Empty;
 
                 // Combine domain and username (e.g., DOMAIN\username)
-                string domainAndUsername = domainName + @"\" + UserName;
+                string domainAndUsername = $"{domainName}\\{userName}";
 
                 // Set the LDAP path 
-                string LDAPPath = _configuration["ldapConfiguration:ADPath"];
+                string ldapPath = _configuration["ldapConfiguration:ADPath"];
+
+                if (string.IsNullOrWhiteSpace(ldapPath))
+                    return false;
 
                 // Create a DirectoryEntry to connect to the LDAP directory
                 // Wrap in Task.Run to make this CPU-bound operation asynchronous
                 bool isValid = await Task.Run(() =>
                 {
-                    DirectoryEntry entry = new DirectoryEntry(LDAPPath, UserName, Password);
-
-                    if (string.IsNullOrEmpty(entry.Name))
+                    try
                     {
-                        return false; // Return false if no valid user name is found
+                        using (DirectoryEntry entry = new DirectoryEntry(ldapPath, userName, password))
+                        {
+                            return !string.IsNullOrEmpty(entry.Name);
+                        }
                     }
-
-                    return true; // Return true if valid
+                    catch
+                    {
+                        return false;
+                    }
                 });
 
                 return isValid;
             }
-            catch (Exception ex)
+            catch
             {
                 return false;
             }
         }
 
+        /// <summary>
+        /// Retrieves pending counts for a specific employee based on their role.
+        /// </summary>
+        /// <param name="filter">Filter containing employee number and role ID</param>
+        /// <returns>Service response containing pending counts or error information</returns>
         public async Task<ServiceResponse> PendingCountService(FilterModel filter)
         {
+            if (filter == null)
+            {
+                return CreateErrorResponse("Filter cannot be null", "400");
+            }
+
             try
             {
-                var PendingCounts = await _loginRepo.PendingCountRepo(filter.EmpNo, filter.RoleId);
+                var pendingCounts = await _loginRepo.PendingCountRepo(filter.EmpNo, filter.RoleId);
 
                 return new ServiceResponse
                 {
                     isError = false,
-                    result = PendingCounts,
-                    Message = "Pending Counts retrieved successfully",
+                    result = pendingCounts,
+                    Message = "Pending counts retrieved successfully",
                     Status = "Success",
                     Code = "200"
                 };
             }
             catch (Exception ex)
             {
-                return new ServiceResponse
-                {
-                    isError = true,
-                    Error = ex.Message,
-                    Message = "Error retrieving Pending",
-                    Status = "Error",
-                    Code = "500"
-                };
+                return CreateErrorResponse($"Error retrieving pending counts: {ex.Message}", "500", ex.Message);
             }
         }
 
-        //************************************NORMAL LOGIN SERVICE FOR LOCAL/STAGING************************************
-
+        /// <summary>
+        /// Performs standard login authentication for local/staging environments.
+        /// </summary>
+        /// <param name="loginModel">Login credentials containing username and password</param>
+        /// <returns>Service response containing user information and JWT token or error details</returns>
         public async Task<ServiceResponse> Login_Service(LoginModel loginModel)
         {
-            ServiceResponse response = new ServiceResponse();
+            var validationResult = ValidateLoginModel(loginModel);
+            if (!validationResult.IsValid)
+            {
+                return validationResult.Response;
+            }
+
             try
             {
-                // Input validation
-                if (string.IsNullOrWhiteSpace(loginModel.EmpNo) ||
-                    string.IsNullOrWhiteSpace(loginModel.Password))
-                {
-                    return new ServiceResponse
-                    {
-                        Status = "Failure",
-                        Code = "400",
-                        Message = "Username and password are required"
-                    };
-                }
-
-                // Additional validation for username format
-                if (!_utility.IsValidUsername(loginModel.EmpNo))
-                {
-                    return new ServiceResponse
-                    {
-                        Status = "Failure",
-                        Code = "400",
-                        Message = "Invalid username format"
-                    };
-                }
-
-                TokenHelperModel tokenHelperModel = new TokenHelperModel();
-                UserViewModel userViewModel = new UserViewModel();
                 var result = await _loginRepo.LoginRepo(loginModel);
-                response.Status = result.Status;
-                response.Code = result.Code;
-                response.Message = result.Message;
 
-                if (result.Code == "200")
-                {
-                    tokenHelperModel.UserName = result.Name;
-                    tokenHelperModel.EmpNo = result.EmpOrDNo;
-                    tokenHelperModel.UserId = result.UserId;
-                    tokenHelperModel.RoleId = result.RoleId;
-                    tokenHelperModel.Role = result.Role;
-
-                    // Generate JWT token and set cookie
-                    string token = _jwtTokenGenerator.GenerateJsonWebToken(tokenHelperModel, _configuration);
-
-                    // Don't include the token in the response model
-                    userViewModel.UserName = result.Name;
-                    userViewModel.EmpNo = result.EmpOrDNo;
-                    userViewModel.Role = result.Role;
-                    userViewModel.RoleId = result.RoleId;
-                    userViewModel.Token = token;
-
-                    response.result = userViewModel;
-                }
+                return await ProcessLoginResult(result);
             }
             catch (Exception ex)
             {
-                response.Status = "Failure";
-                response.Code = "400";
-                response.isError = true;
-                response.Message = "System can not find the combination of this Username and password, please try again";
+                return CreateErrorResponse(
+                    "System cannot find the combination of this username and password, please try again",
+                    "400",
+                    ex.Message);
             }
-            return response;
         }
 
-        //************************************LDAP LOGIN SERVICE FOR PRODUCTION************************************
-
+        /// <summary>
+        /// Performs LDAP-based login authentication for production environments.
+        /// </summary>
+        /// <param name="loginModel">Login credentials containing username and password</param>
+        /// <returns>Service response containing user information and JWT token or error details</returns>
         public async Task<ServiceResponse> LDAPLoginService(LoginModel loginModel)
         {
-            ServiceResponse response = new ServiceResponse();
+            var validationResult = ValidateLoginModel(loginModel);
+            if (!validationResult.IsValid)
+            {
+                return validationResult.Response;
+            }
+
             try
             {
-                // Input validation
-                if (string.IsNullOrWhiteSpace(loginModel.EmpNo) ||
-                    string.IsNullOrWhiteSpace(loginModel.Password))
+                var ldapAuth = await isLDAPAuthAsync(loginModel.EmpNo, loginModel.Password);
+
+                if (!ldapAuth)
                 {
-                    return new ServiceResponse
-                    {
-                        Status = "Failure",
-                        Code = "400",
-                        Message = "Username and password are required"
-                    };
-                }
-                // Additional validation for username format
-                if (!_utility.IsValidUsername(loginModel.EmpNo))
-                {
-                    return new ServiceResponse
-                    {
-                        Status = "Failure",
-                        Code = "400",
-                        Message = "Invalid username format"
-                    };
+                    return CreateErrorResponse("Unauthorized Access", "401");
                 }
 
-                var Ldap = await isLDAPAuthAsync(loginModel.EmpNo, loginModel.Password);
+                var result = await _loginRepo.LDAPLoginRepo(loginModel, true);
 
-                if (Ldap == true)
-                {
-                    TokenHelperModel tokenHelperModel = new TokenHelperModel();
-                    UserViewModel userViewModel = new UserViewModel();
-                    var result = await _loginRepo.LDAPLoginRepo(loginModel, true);
-
-                    response.Status = result.Status;
-                    response.Code = result.Code;
-                    response.Message = result.Message;
-
-                    if (result.Code == "200")
-                    {
-                        tokenHelperModel.UserName = result.Name;
-                        tokenHelperModel.EmpNo = result.EmpOrDNo;
-                        tokenHelperModel.UserId = result.UserId;
-                        tokenHelperModel.RoleId = result.RoleId;
-                        tokenHelperModel.Role = result.Role;
-
-                        // Generate JWT token and set cookie
-                        string token = _jwtTokenGenerator.GenerateJsonWebToken(tokenHelperModel, _configuration);
-
-                        // Don't include the token in the response model
-                        userViewModel.UserName = result.Name;
-                        userViewModel.EmpNo = result.EmpOrDNo;
-                        userViewModel.Role = result.Role;
-                        userViewModel.Token = token;
-
-                        response.result = userViewModel;
-                    }
-                }
-                else
-                {
-                    response.Status = "Failure";
-                    response.Code = "401";
-                    response.Message = "Unauthorized Access";
-                }
-
+                return await ProcessLoginResult(result);
             }
             catch (Exception ex)
             {
-                response.Status = "Failure";
-                response.Code = "400";
-                response.isError = true;
-                response.Message = "System can not find the combination of this Username and password, please try again";
+                return CreateErrorResponse(
+                    "System cannot find the combination of this username and password, please try again",
+                    "400",
+                    ex.Message);
             }
-            return response;
         }
 
+        /// <summary>
+        /// Logs out a user by their employee number.
+        /// </summary>
+        /// <param name="empNo">Employee number of the user to logout</param>
+        /// <returns>Service response indicating success or failure of logout operation</returns>
         public async Task<ServiceResponse> LogOutService(string empNo)
         {
-            ServiceResponse response = new ServiceResponse();
+            if (string.IsNullOrWhiteSpace(empNo))
+            {
+                return CreateErrorResponse("Employee number is required", "400");
+            }
+
             try
             {
                 var logoutResult = await _loginRepo.LogoutRepo(empNo);
 
-                // Map repository result to service response
-                response.Status = logoutResult.Status;
-                response.Code = logoutResult.Code;
-                response.Message = logoutResult.Message;
+                return new ServiceResponse
+                {
+                    Status = logoutResult.Status,
+                    Code = logoutResult.Code,
+                    Message = logoutResult.Message,
+                    isError = logoutResult.Code != "200"
+                };
             }
             catch (Exception ex)
             {
-                // General exception handling for service-level failures
-                response.Status = "Failure";
-                response.Code = "500";
-                response.isError = true;
-                response.Message = "Failed to logout: " + ex.Message;
+                return CreateErrorResponse($"Failed to logout: {ex.Message}", "500", ex.Message);
             }
+        }
+
+        /// <summary>
+        /// Updates the login heartbeat for a specific employee to track active sessions.
+        /// </summary>
+        /// <param name="empNo">Employee number to update heartbeat for</param>
+        /// <returns>True if heartbeat update was successful, false otherwise</returns>
+        public async Task<bool> UpdateLoginHeartbeatService(string empNo)
+        {
+            if (string.IsNullOrWhiteSpace(empNo))
+                return false;
+
+            try
+            {
+                return await _loginRepo.UpdateLoginHeartBeatRepo(empNo);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Updates the regular heartbeat for a specific employee to track system activity.
+        /// </summary>
+        /// <param name="empNo">Employee number to update heartbeat for</param>
+        /// <returns>True if heartbeat update was successful, false otherwise</returns>
+        public async Task<bool> UpdateRegularHeartbeatService(string empNo)
+        {
+            if (string.IsNullOrWhiteSpace(empNo))
+                return false;
+
+            try
+            {
+                return await _loginRepo.UpdateRegularHeartBeatRepo(empNo);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        #endregion
+
+        #region Private Helper Methods
+
+        /// <summary>
+        /// Validates the login model for required fields and format.
+        /// </summary>
+        /// <param name="loginModel">Login model to validate</param>
+        /// <returns>Validation result with success status and response if invalid</returns>
+        private (bool IsValid, ServiceResponse Response) ValidateLoginModel(LoginModel loginModel)
+        {
+            if (loginModel == null)
+            {
+                return (false, CreateErrorResponse("Login model cannot be null", "400"));
+            }
+
+            if (string.IsNullOrWhiteSpace(loginModel.EmpNo) || string.IsNullOrWhiteSpace(loginModel.Password))
+            {
+                return (false, CreateErrorResponse("Username and password are required", "400"));
+            }
+
+            if (!_utility.IsValidUsername(loginModel.EmpNo))
+            {
+                return (false, CreateErrorResponse("Invalid username format", "400"));
+            }
+
+            return (true, null);
+        }
+
+        /// <summary>
+        /// Processes the login result from repository and creates appropriate service response.
+        /// </summary>
+        /// <param name="result">Result from login repository operation</param>
+        /// <returns>Service response with user information and JWT token</returns>
+        private async Task<ServiceResponse> ProcessLoginResult(dynamic result)
+        {
+            var response = new ServiceResponse
+            {
+                Status = result.Status,
+                Code = result.Code,
+                Message = result.Message,
+                isError = result.Code != "200"
+            };
+
+            if (result.Code == "200")
+            {
+                var tokenHelperModel = new TokenHelperModel
+                {
+                    UserName = result.Name,
+                    EmpNo = result.EmpOrDNo,
+                    UserId = result.UserId,
+                    RoleId = result.RoleId,
+                    Role = result.Role
+                };
+
+                // Generate JWT token
+                string token = _jwtTokenGenerator.GenerateJsonWebToken(tokenHelperModel, _configuration);
+
+                var userViewModel = new UserViewModel
+                {
+                    UserName = result.Name,
+                    EmpNo = result.EmpOrDNo,
+                    Role = result.Role,
+                    RoleId = result.RoleId,
+                    Token = token
+                };
+
+                response.result = userViewModel;
+            }
+
             return response;
         }
 
-        public async Task<bool> UpdateLoginHeartbeatService(string empNo)
+        /// <summary>
+        /// Creates a standardized error response.
+        /// </summary>
+        /// <param name="message">Error message</param>
+        /// <param name="code">Error code</param>
+        /// <param name="error">Detailed error information (optional)</param>
+        /// <returns>ServiceResponse with error details</returns>
+        private static ServiceResponse CreateErrorResponse(string message, string code, string error = null)
         {
-            return await _loginRepo.UpdateLoginHeartBeatRepo(empNo);
+            return new ServiceResponse
+            {
+                Status = "Failure",
+                Code = code,
+                Message = message,
+                isError = true,
+                Error = error
+            };
         }
 
-        public async Task<bool> UpdateRegularHeartbeatService(string empNo)
-        {
-            return await _loginRepo.UpdateRegularHeartBeatRepo(empNo);
-        }
+        #endregion
     }
 }

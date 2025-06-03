@@ -25,6 +25,7 @@ namespace DealerSetu_Repositories.IRepositories
 
         Task<int> ApproveRejectActualClaimRepo(FilterModel filter);
         Task<List<ActualClaimModel>> ActualClaimListRepo(FilterModel filter);
+        Task<int> UpdateActualClaimRepo(ActualClaimUpdateModel actualClaim);
         Task<int> AddActualClaimRepo(ActualClaimModel actualClaim);
         Task<ActualClaimModel> ActualClaimDetailsRepo(int activityId);
         Task<int> AddActualRemarkRepo(int claimId, string remarks);

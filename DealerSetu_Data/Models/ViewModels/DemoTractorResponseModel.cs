@@ -26,6 +26,7 @@ namespace DealerSetu_Data.Models.ViewModels
         public string RejectedBy { get; set; }
         public string RejectedRemarks { get; set; }
         public string Remarks { get; set; }
+        public string RemarksDate { get; set; }
         public string DealerState { get; set; }
         public string Model { get; set; }
         public string chasisno { get; set; }

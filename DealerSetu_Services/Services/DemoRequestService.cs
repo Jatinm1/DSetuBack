@@ -5,35 +5,40 @@ using DealerSetu_Repositories.IRepositories;
 using DealerSetu_Services.IServices;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace DealerSetu_Services.Services
 {
     public class DemoRequestService : IDemoRequestService
     {
+        private static readonly Dictionary<string, string> FieldDisplayNames = new Dictionary<string, string>
+        {
+            { "Model", "Model" },
+            { "ChassisNo", "Chassis No" },
+            { "EngineNo", "Engine No" }
+        };
+
         private readonly IDemoRequestRepository _demoRequestRepository;
         private readonly IFileValidationService _fileValidationService;
-        private readonly ILogger<DemoRequestService> _logger;
 
-        public DemoRequestService(IDemoRequestRepository demoRequestRepository, ILogger<DemoRequestService> logger, IFileValidationService fileValidationService)
+        public DemoRequestService(
+            IDemoRequestRepository demoRequestRepository, 
+            ILogger<DemoRequestService> logger, 
+            IFileValidationService fileValidationService)
         {
             _demoRequestRepository = demoRequestRepository ?? throw new ArgumentNullException(nameof(demoRequestRepository));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _fileValidationService = fileValidationService;
+            _fileValidationService = fileValidationService ?? throw new ArgumentNullException(nameof(fileValidationService));
         }
 
         public async Task<ServiceResponse> DemoTractorApprovedService(FilterModel filter, int pageIndex, int pageSize)
         {
-            _logger.LogInformation("Getting approved demo tractor list with filters");
-
             try
             {
                 ValidateFilterParams(filter, pageIndex, pageSize);
 
                 var (demoTractorList, totalCount) = await _demoRequestRepository.DemoTractorApprovedRepo(filter, pageIndex, pageSize);
-
-                _logger.LogInformation("Retrieved {Count} approved demo tractors out of {Total}",
-                    demoTractorList.Count, totalCount);
 
                 return CreateSuccessResponse(
                     demoTractorList,
@@ -42,29 +47,22 @@ namespace DealerSetu_Services.Services
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning(ex, "Invalid parameters in DemoTractorApprovedService");
                 return CreateErrorResponse(ex, "Invalid parameters for retrieving demo tractor list", "400");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in DemoTractorApprovedService");
                 return CreateErrorResponse(ex, "Error while retrieving demo tractor list");
             }
         }
 
         public async Task<ServiceResponse> DemoTractorPendingService(FilterModel filter, int pageIndex, int pageSize)
         {
-            _logger.LogInformation("Getting pending demo tractor list with filters");
-
             try
             {
                 ValidateFilterParams(filter, pageIndex, pageSize);
 
                 var (pendingDemoTractorList, totalCount) = await _demoRequestRepository.DemoTractorPendingRepo(filter, pageIndex, pageSize);
 
-                _logger.LogInformation("Retrieved {Count} pending demo tractors out of {Total}",
-                    pendingDemoTractorList.Count, totalCount);
-
                 return CreateSuccessResponse(
                     pendingDemoTractorList,
                     totalCount,
@@ -72,81 +70,61 @@ namespace DealerSetu_Services.Services
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning(ex, "Invalid parameters in DemoTractorPendingService");
                 return CreateErrorResponse(ex, "Invalid parameters for retrieving pending demo tractor list", "400");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in DemoTractorPendingService");
                 return CreateErrorResponse(ex, "Error while retrieving pending demo tractor list");
             }
         }
 
         public async Task<ServiceResponse> DemoTractorPendingClaimService(FilterModel filter, int pageIndex, int pageSize)
         {
-            _logger.LogInformation("Getting pending demo tractor list with filters");
-
             try
             {
                 ValidateFilterParams(filter, pageIndex, pageSize);
 
                 var (pendingDemoTractorList, totalCount) = await _demoRequestRepository.DemoTractorPendingClaimRepo(filter, pageIndex, pageSize);
 
-                _logger.LogInformation("Retrieved {Count} pending demo tractors out of {Total}",
-                    pendingDemoTractorList.Count, totalCount);
-
                 return CreateSuccessResponse(
                     pendingDemoTractorList,
                     totalCount,
-                    "Pending demo tractor list retrieved successfully");
+                    "Pending demo tractor claim list retrieved successfully");
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning(ex, "Invalid parameters in DemoTractorPendingService");
-                return CreateErrorResponse(ex, "Invalid parameters for retrieving pending demo tractor list", "400");
+                return CreateErrorResponse(ex, "Invalid parameters for retrieving pending demo tractor claim list", "400");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in DemoTractorPendingService");
-                return CreateErrorResponse(ex, "Error while retrieving pending demo tractor list");
+                return CreateErrorResponse(ex, "Error while retrieving pending demo tractor claim list");
             }
         }
 
-
-
         public async Task<ServiceResponse> FiscalYearsService()
         {
-            _logger.LogInformation("Getting fiscal years");
-
             try
             {
                 var fiscalYears = await _demoRequestRepository.FiscalYearsRepo();
 
-                _logger.LogInformation("Retrieved {Count} fiscal years", fiscalYears.Count);
-
                 return CreateSuccessResponse(
                     fiscalYears,
-                    fiscalYears.Count,
+                    fiscalYears?.Count ?? 0,
                     "Fiscal years retrieved successfully");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in FiscalYearsService");
                 return CreateErrorResponse(ex, "Error retrieving fiscal years");
             }
         }
 
         public async Task<ServiceResponse> SubmitDemoReqService(DemoReqSubmissionModel request, string empNo)
         {
-            _logger.LogInformation("Submitting demo request for employee {EmpNo}", empNo);
-
             try
             {
                 ValidateSubmissionRequest(request, empNo);
 
                 var demoReqId = await _demoRequestRepository.SubmitDemoReqRepo(request, empNo);
-
-                _logger.LogInformation("Demo request submitted successfully with ID {DemoReqId}", demoReqId);
 
                 return CreateSuccessResponse(
                     demoReqId,
@@ -155,20 +133,16 @@ namespace DealerSetu_Services.Services
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning(ex, "Invalid submission request parameters");
                 return CreateErrorResponse(ex, "Invalid parameters for demo request submission", "400");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in SubmitDemoReqService");
                 return CreateErrorResponse(ex, "Error submitting demo request");
             }
         }
 
         public async Task<ServiceResponse> DemoReqDataService(int reqId)
         {
-            _logger.LogInformation("Getting demo request data for ID {ReqId}", reqId);
-
             try
             {
                 if (reqId <= 0)
@@ -180,11 +154,8 @@ namespace DealerSetu_Services.Services
 
                 if (demoRequestData == null)
                 {
-                    _logger.LogWarning("No demo request data found for ID {ReqId}", reqId);
                     return CreateErrorResponse(null, "Demo request not found", "404");
                 }
-
-                _logger.LogInformation("Retrieved demo request data for ID {ReqId}", reqId);
 
                 return CreateSuccessResponse(
                     demoRequestData,
@@ -193,20 +164,17 @@ namespace DealerSetu_Services.Services
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning(ex, "Invalid request ID parameter");
                 return CreateErrorResponse(ex, "Invalid request ID", "400");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in DemoReqDataService for request ID {ReqId}", reqId);
                 return CreateErrorResponse(ex, "Error retrieving demo request data");
             }
         }
 
         public async Task<ServiceResponse> DemoTractorApproveRejectService(FilterModel filter)
         {
-            _logger.LogInformation("Processing {Action} for request ID {ReqId}",
-                (bool)filter.IsApproved ? "approval" : "rejection", filter.ReqId);
+            var action = (bool)filter.IsApproved ? "approval" : "rejection";
 
             try
             {
@@ -215,8 +183,6 @@ namespace DealerSetu_Services.Services
                 var result = await _demoRequestRepository.DemoTractorApproveRejectRepo(filter);
 
                 var actionType = (bool)filter.IsApproved ? "approved" : "rejected";
-                _logger.LogInformation("Demo tractor request {Action} successfully with result {Result}",
-                    actionType, result);
 
                 return CreateSuccessResponse(
                     result,
@@ -225,180 +191,147 @@ namespace DealerSetu_Services.Services
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning(ex, "Invalid approval/rejection parameters");
                 return CreateErrorResponse(ex, "Invalid parameters for demo tractor approval/rejection", "400");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in DemoTractorApproveRejectService for request ID {ReqId}", filter.ReqId);
                 return CreateErrorResponse(ex, "Error approving/rejecting demo tractor request");
             }
         }
 
         public async Task<ServiceResponse> UpdateDemoReqService(DemoReqUpdateModel request, string empNo)
         {
+
             try
             {
-                var reqNo = await _demoRequestRepository.UpdateDemoReqRepo(request, empNo);
-                return new ServiceResponse
+                if (request == null)
                 {
-                    isError = false,
-                    result = reqNo,
-                    Message = "Demo Request Updated successfully",
-                    Status = "Success",
-                    Code = "200"
-                };
+                    throw new ArgumentNullException(nameof(request));
+                }
+
+                if (string.IsNullOrWhiteSpace(empNo))
+                {
+                    throw new ArgumentException("Employee number is required", nameof(empNo));
+                }
+
+                var reqNo = await _demoRequestRepository.UpdateDemoReqRepo(request, empNo);
+
+
+                return CreateSuccessResponse(
+                    reqNo,
+                    1,
+                    "Demo request updated successfully");
+            }
+            catch (ArgumentException ex)
+            {
+                return CreateErrorResponse(ex, "Invalid parameters for updating demo request", "400");
             }
             catch (Exception ex)
             {
-                return new ServiceResponse
-                {
-                    isError = true,
-                    Error = ex.Message,
-                    Message = "Error Updating Demo Request",
-                    Status = "Error",
-                    Code = "500"
-                };
+                return CreateErrorResponse(ex, "Error updating demo request");
             }
         }
 
         public async Task<ServiceResponse> DemoActualClaimListService(FilterModel filter)
         {
+
             try
             {
-                var demoActualClaimList= await _demoRequestRepository.DemoActualClaimListRepo(filter);
-                return new ServiceResponse
+                if (filter == null)
                 {
-                    isError = false,
-                    result = demoActualClaimList,
-                    Message = "Demo Actual Claim List retrieved successfully",
-                    Status = "Success",
-                    Code = "200"
-                };
+                    throw new ArgumentNullException(nameof(filter));
+                }
+
+                var demoActualClaimList = await _demoRequestRepository.DemoActualClaimListRepo(filter);
+
+
+                return CreateSuccessResponse(
+                    demoActualClaimList,
+                    demoActualClaimList?.Count ?? 0,
+                    "Demo actual claim list retrieved successfully");
+            }
+            catch (ArgumentException ex)
+            {
+                return CreateErrorResponse(ex, "Invalid parameters for retrieving demo actual claim list", "400");
             }
             catch (Exception ex)
             {
-                return new ServiceResponse
-                {
-                    isError = true,
-                    Error = ex.Message,
-                    Message = "Error retrieving Demo Actual Claim List",
-                    Status = "Error",
-                    Code = "500"
-                };
+                return CreateErrorResponse(ex, "Error retrieving demo actual claim list");
             }
         }
 
-
         public async Task<ServiceResponse> AddDemoActualClaimService(DemoReqModel request)
         {
+
             try
             {
-                // Define fields to validate
-                var fieldsToValidate = new Dictionary<string, string>
-                    {
-                        { nameof(request.Model), request.Model },
-                        { nameof(request.ChassisNo), request.ChassisNo },
-                        { nameof(request.EngineNo), request.EngineNo }    
-                    };
-                foreach (var field in fieldsToValidate)
+                if (request == null)
                 {
-                    string fieldName = field.Key;
-                    string fieldValue = field.Value;
-
-                    // Skip validation if field is null or empty
-                    if (string.IsNullOrWhiteSpace(fieldValue))
-                        continue;
-
-                    // Format field name for display in error message (add spaces before capital letters)
-                    string displayName = string.Concat(fieldName.Select(c => char.IsUpper(c) ? " " + c : c.ToString())).Trim();
-
-                    // Check for malicious patterns
-                    if (_fileValidationService.ContainsMaliciousPatterns(fieldValue))
-                    {
-                        return new ServiceResponse
-                        {
-                            isError = true,
-                            result = null,
-                            Status = "Error",
-                            Message = $"{displayName} contains potentially malicious content",
-                            Code = "400"
-                        };
-                    }
+                    throw new ArgumentNullException(nameof(request));
                 }
 
-                if (request.ChassisNo != null)
+                var validationResult = ValidateClaimFields(request);
+                if (validationResult != null)
                 {
-                    var claimId = await _demoRequestRepository.AddBasicDemoActualClaimRepo(request);
+                    return validationResult;
+                }
 
-                    return new ServiceResponse
-                    {
-                        isError = false,
-                        result = claimId,
-                        Message = "Claim Submitted successfully",
-                        Status = "Success",
-                        Code = "200"
-                    };
+                int claimId;
+                if (!string.IsNullOrWhiteSpace(request.ChassisNo))
+                {
+                    claimId = await _demoRequestRepository.AddBasicDemoActualClaimRepo(request);
                 }
                 else
                 {
-                    var claimId = await _demoRequestRepository.AddAllDemoActualClaimRepo(request);
-
-                    return new ServiceResponse
-                    {
-                        isError = false,
-                        result = claimId,
-                        Message = "Claim Submitted successfully",
-                        Status = "Success",
-                        Code = "200"
-                    };
-
+                    claimId = await _demoRequestRepository.AddAllDemoActualClaimRepo(request);
                 }
+
+                return CreateSuccessResponse(
+                    claimId,
+                    1,
+                    "Claim submitted successfully");
+            }
+            catch (ArgumentException ex)
+            {
+                return CreateErrorResponse(ex, "Invalid parameters for submitting claim", "400");
             }
             catch (Exception ex)
             {
-                return new ServiceResponse
-                {
-                    isError = true,
-                    Error = ex.Message,
-                    Message = "Error submitting Claim",
-                    Status = "Error",
-                    Code = "500"
-                };
+                return CreateErrorResponse(ex, "Error submitting claim");
             }
         }
 
         public async Task<ServiceResponse> GetDemoTractorDocService(FilterModel filter)
         {
+
             try
             {
-                var DemoTractorDoc = await _demoRequestRepository.GetDemoTractorDoc(filter);
-                return new ServiceResponse
+                if (filter == null)
                 {
-                    isError = false,
-                    result = DemoTractorDoc,
-                    Message = "DemoTractorDoc data retrieved successfully",
-                    Status = "Success",
-                    Code = "200"
-                };
+                    throw new ArgumentNullException(nameof(filter));
+                }
+
+                var demoTractorDoc = await _demoRequestRepository.GetDemoTractorDoc(filter);
+
+
+                return CreateSuccessResponse(
+                    demoTractorDoc,
+                    1,
+                    "Demo tractor document retrieved successfully");
+            }
+            catch (ArgumentException ex)
+            {
+                return CreateErrorResponse(ex, "Invalid parameters for retrieving demo tractor document", "400");
             }
             catch (Exception ex)
             {
-                return new ServiceResponse
-                {
-                    isError = true,
-                    Error = ex.Message,
-                    Message = "Error retrieving DemoTractorDoc data",
-                    Status = "Error",
-                    Code = "500"
-                };
+                return CreateErrorResponse(ex, "Error retrieving demo tractor document");
             }
         }
 
         public async Task<ServiceResponse> DemoTractorApproveRejectClaimService(FilterModel filter)
         {
-            _logger.LogInformation("Processing {Action} for request ID {ReqId}",
-                (bool)filter.IsApproved ? "approval" : "rejection", filter.ReqId);
+            var action = (bool)filter.IsApproved ? "approval" : "rejection";
 
             try
             {
@@ -407,78 +340,53 @@ namespace DealerSetu_Services.Services
                 var result = await _demoRequestRepository.DemoTractorApproveRejectClaimRepo(filter);
 
                 var actionType = (bool)filter.IsApproved ? "approved" : "rejected";
-                _logger.LogInformation("Demo tractor claim {Action} successfully with result {Result}",
-                    actionType, result);
 
                 return CreateSuccessResponse(
                     result,
                     1,
-                    $"Demo tractor Claim {actionType} successfully");
+                    $"Demo tractor claim {actionType} successfully");
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning(ex, "Invalid approval/rejection parameters");
-                return CreateErrorResponse(ex, "Invalid parameters for demo tractor approval/rejection", "400");
+                return CreateErrorResponse(ex, "Invalid parameters for demo tractor claim approval/rejection", "400");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in DemoTractorApproveRejectClaimService for request ID {ReqId}", filter.ReqId);
-                return CreateErrorResponse(ex, "Error approving/rejecting demo tractor Claim");
+                return CreateErrorResponse(ex, "Error approving/rejecting demo tractor claim");
             }
         }
 
         public async Task<ServiceResponse> AddDemoRemarksService(AddDemoTracRemarksModel request)
         {
+
             try
             {
-                if (request.Remarks.Any() || request.Remarks != null)
+                if (request == null)
                 {
-
-                    if (_fileValidationService.ContainsMaliciousPatterns(request.Remarks))
-                        return new ServiceResponse
-                        {
-                            isError = true,
-                            result = null,
-                            Status = "Error",
-                            Message = "Remarks contains potentially malicious content",
-                            Code = "400"
-                        };
-
+                    throw new ArgumentNullException(nameof(request));
                 }
-                if (request.RemarksDate.Any() || request.RemarksDate != null)
+
+                var validationResult = ValidateRemarksFields(request);
+                if (validationResult != null)
                 {
-
-                    if (_fileValidationService.ContainsMaliciousPatterns(request.RemarksDate))
-                        return new ServiceResponse
-                        {
-                            isError = true,
-                            result = null,
-                            Status = "Error",
-                            Message = "Remarks contains potentially malicious content",
-                            Code = "400"
-                        };
-
+                    return validationResult;
                 }
-                var DemoReqId = await _demoRequestRepository.AddActualDemoRemarkRepo(request);
-                return new ServiceResponse
-                {
-                    isError = false,
-                    result = DemoReqId,
-                    Message = "Remarks Added successfully",
-                    Status = "Success",
-                    Code = "200"
-                };
+
+                var demoReqId = await _demoRequestRepository.AddActualDemoRemarkRepo(request);
+
+
+                return CreateSuccessResponse(
+                    demoReqId,
+                    1,
+                    "Remarks added successfully");
+            }
+            catch (ArgumentException ex)
+            {
+                return CreateErrorResponse(ex, "Invalid parameters for adding remarks", "400");
             }
             catch (Exception ex)
             {
-                return new ServiceResponse
-                {
-                    isError = true,
-                    Error = ex.Message,
-                    Message = "Error adding Remarks",
-                    Status = "Error",
-                    Code = "500"
-                };
+                return CreateErrorResponse(ex, "Error adding remarks");
             }
         }
 
@@ -490,6 +398,7 @@ namespace DealerSetu_Services.Services
             {
                 throw new ArgumentNullException(nameof(filter));
             }
+
             if (filter.Export == false)
             {
                 if (pageIndex < 0)
@@ -544,11 +453,62 @@ namespace DealerSetu_Services.Services
                 throw new ArgumentException("Employee number is required", nameof(filter.EmpNo));
             }
 
-            if ((bool)!filter.IsApproved && string.IsNullOrWhiteSpace(filter.RejectRemarks))
+            if (!(bool)filter.IsApproved && string.IsNullOrWhiteSpace(filter.RejectRemarks))
             {
-                throw new ArgumentException("Rejection remarks are required when rejecting a request",
-                    nameof(filter.RejectRemarks));
+                throw new ArgumentException("Rejection remarks are required when rejecting a request", nameof(filter.RejectRemarks));
             }
+        }
+
+        private ServiceResponse ValidateClaimFields(DemoReqModel request)
+        {
+            var fieldsToValidate = new Dictionary<string, string>
+            {
+                { nameof(request.Model), request.Model },
+                { nameof(request.ChassisNo), request.ChassisNo },
+                { nameof(request.EngineNo), request.EngineNo }
+            };
+
+            foreach (var field in fieldsToValidate)
+            {
+                if (string.IsNullOrWhiteSpace(field.Value))
+                    continue;
+
+                var displayName = FieldDisplayNames.ContainsKey(field.Key) 
+                    ? FieldDisplayNames[field.Key] 
+                    : FormatFieldName(field.Key);
+
+                if (_fileValidationService.ContainsMaliciousPatterns(field.Value))
+                {
+                    return CreateErrorResponse(null, $"{displayName} contains potentially malicious content", "400");
+                }
+            }
+
+            return null;
+        }
+
+        private ServiceResponse ValidateRemarksFields(AddDemoTracRemarksModel request)
+        {
+            if (!string.IsNullOrWhiteSpace(request.Remarks) && 
+                _fileValidationService.ContainsMaliciousPatterns(request.Remarks))
+            {
+                return CreateErrorResponse(null, "Remarks contains potentially malicious content", "400");
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.RemarksDate) && 
+                _fileValidationService.ContainsMaliciousPatterns(request.RemarksDate))
+            {
+                return CreateErrorResponse(null, "Remarks date contains potentially malicious content", "400");
+            }
+
+            return null;
+        }
+
+        private static string FormatFieldName(string fieldName)
+        {
+            if (string.IsNullOrEmpty(fieldName))
+                return fieldName;
+
+            return string.Concat(fieldName.Select(c => char.IsUpper(c) ? " " + c : c.ToString())).Trim();
         }
 
         private ServiceResponse CreateSuccessResponse(object result, int totalCount, string message)

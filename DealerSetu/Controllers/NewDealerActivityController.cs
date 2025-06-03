@@ -160,6 +160,22 @@ namespace DealerSetu.Controllers
         {
             try
             {
+                // Validate required fields for each activity
+                foreach (var activity in request.ActivityData)
+                {
+                    if (string.IsNullOrWhiteSpace(activity.ActivityType))
+                        return BadRequest("ActivityType is required.");
+
+                    if (string.IsNullOrWhiteSpace(activity.ActivityThrough))
+                        return BadRequest("ActivityThrough is required.");
+
+                    if (string.IsNullOrWhiteSpace(activity.BudgetRequested))
+                        return BadRequest("BudgetRequested is required.");
+
+                    if (string.IsNullOrWhiteSpace(activity.ActivityMonth))
+                        return BadRequest("ActivityMonth is required.");
+                }
+
                 var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
                 var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
 
@@ -179,11 +195,27 @@ namespace DealerSetu.Controllers
             }
         }
 
+
         [HttpPost("UpdateClaim")]
         public async Task<IActionResult> UpdateClaim([FromBody] ClaimUpdationRequest request)
         {
             try
             {
+
+                foreach (var activity in request.ActivityData)
+                {
+                    if (string.IsNullOrWhiteSpace(activity.ActivityType))
+                        return BadRequest("ActivityType is required.");
+
+                    if (string.IsNullOrWhiteSpace(activity.ActivityThrough))
+                        return BadRequest("ActivityThrough is required.");
+
+                    if (string.IsNullOrWhiteSpace(activity.BudgetRequested))
+                        return BadRequest("BudgetRequested is required.");
+
+                    if (string.IsNullOrWhiteSpace(activity.ActivityMonth))
+                        return BadRequest("ActivityMonth is required.");
+                }
                 var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
                 var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
 
@@ -250,10 +282,50 @@ namespace DealerSetu.Controllers
         //*******************************************ACTUAL CLAIM APIS*****************************************
 
         [HttpPost("AddActualClaim")]
-        public async Task<IActionResult> AddUpdateClaim([FromForm] ActualClaimAddUpdateRequest request)
+        public async Task<IActionResult> AddClaim([FromForm] ActualClaimAddRequest request)
         {
             try
             {
+
+                if (request.ActivityId == null || request.ActivityId == 0)
+                {
+                    return BadRequest(_utility.CreateErrorResponse(
+                        "Invalid payload", "ActivityId must not be null or 0", "400"));
+                }
+
+                var validationFields = new Dictionary<string, string>
+        {
+            { "Enquiry", request.Enquiry },
+            { "ActualExpenses", request.ActualExpenses },
+            { "DateOfActivity", request.DateOfActivity },
+            { "CustomerContacted", request.CustomerContacted },
+            { "Delivery", request.Delivery }
+        };
+
+                foreach (var field in validationFields)
+                {
+                    if (string.IsNullOrWhiteSpace(field.Value))
+                    {
+                        return BadRequest(_utility.CreateErrorResponse(
+                            "Invalid payload", $"{field.Key} field is required", "400"));
+                    }
+                }
+
+                // Check if DateOfActivity is after 01/01/2000
+                if (!DateTime.TryParse(request.DateOfActivity, out DateTime parsedDate))
+                {
+                    return BadRequest(_utility.CreateErrorResponse(
+                        "Invalid payload", "DateOfActivity is not a valid date", "400"));
+                }
+
+                var minValidDate = new DateTime(2000, 1, 1);
+                if (parsedDate <= minValidDate)
+                {
+                    return BadRequest(_utility.CreateErrorResponse(
+                        "Invalid payload", "DateOfActivity must be after 01/01/2000", "400"));
+                }
+
+
                 var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
                 var model = new ActualClaimModel
                 {
@@ -266,10 +338,10 @@ namespace DealerSetu.Controllers
                     Delivery = request.Delivery,
                     ActualClaimOn = DateTime.Now
                 };
-                if (request.Image1 == null)
-                {
-                    return StatusCode(400, "Atleast 1 Image is required");
-                }
+                //if (request.Image1 == null)
+                //{
+                //    return StatusCode(400, "Atleast 1 Image is required");
+                //}
                 // Process image uploads if present
                 #region Validation For Image Files
                 // Validate each image if present
@@ -319,6 +391,103 @@ namespace DealerSetu.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
+
+
+        [HttpPost("UpdateActualClaim")]
+        public async Task<IActionResult> UpdateClaim([FromForm] ActualClaimUpdateRequest request)
+        {
+            try
+            {
+                // Validate ClaimId is required
+                if (request.ClaimId == null || request.ClaimId == 0)
+                {
+                    return BadRequest(_utility.CreateErrorResponse(
+                        "Invalid payload", "ClaimId must not be null or 0", "400"));
+                }
+
+                // Validate DateOfActivity if provided
+                if (!string.IsNullOrWhiteSpace(request.DateOfActivity))
+                {
+                    if (!DateTime.TryParse(request.DateOfActivity, out DateTime parsedDate))
+                    {
+                        return BadRequest(_utility.CreateErrorResponse(
+                            "Invalid payload", "DateOfActivity is not a valid date", "400"));
+                    }
+
+                    var minValidDate = new DateTime(2000, 1, 1);
+                    if (parsedDate <= minValidDate)
+                    {
+                        return BadRequest(_utility.CreateErrorResponse(
+                            "Invalid payload", "DateOfActivity must be after 01/01/2000", "400"));
+                    }
+                }
+
+                var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
+                var model = new ActualClaimUpdateModel
+                {
+                    ClaimId = request.ClaimId,
+                    EmpNo = empNo,
+                    ActualExpenses = request.ActualExpenses,
+                    DateOfActivity = request.DateOfActivity,
+                    CustomerContacted = request.CustomerContacted,
+                    Enquiry = request.Enquiry,
+                    Delivery = request.Delivery,
+                    ActualClaimOn = DateTime.Now
+                };
+
+                #region Validation For Image Files
+                // Validate each image if present
+                if (request.Image1 != null)
+                {
+                    var validationResult = await _fileValidationService.ValidateImageAsync(request.Image1, MaxFileSize);
+                    if ((bool)validationResult.isError)
+                    {
+                        return StatusCode(int.Parse(validationResult.Code), new { Message = validationResult.Message });
+                    }
+                }
+                if (request.Image2 != null)
+                {
+                    var validationResult = await _fileValidationService.ValidateImageAsync(request.Image2, MaxFileSize);
+                    if ((bool)validationResult.isError)
+                    {
+                        return StatusCode(int.Parse(validationResult.Code), new { Message = validationResult.Message });
+                    }
+                }
+                if (request.Image3 != null)
+                {
+                    var validationResult = await _fileValidationService.ValidateImageAsync(request.Image3, MaxFileSize);
+                    if ((bool)validationResult.isError)
+                    {
+                        return StatusCode(int.Parse(validationResult.Code), new { Message = validationResult.Message });
+                    }
+                }
+                #endregion
+
+                // Upload images if provided
+                if (request.Image1 != null && request.Image1.Length > 0)
+                {
+                    model.Image1 = await _blobStorageService.UploadFileAsync(request.Image1);
+                }
+                if (request.Image2 != null && request.Image2.Length > 0)
+                {
+                    model.Image2 = await _blobStorageService.UploadFileAsync(request.Image2);
+                }
+                if (request.Image3 != null && request.Image3.Length > 0)
+                {
+                    model.Image3 = await _blobStorageService.UploadFileAsync(request.Image3);
+                }
+
+                var result = await _newDealerService.UpdateActualClaimService(model);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("NewDealerActivityController", "Error in UpdateClaim", ex);
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+
         [HttpPost("GetActualClaimDetails")]
         public async Task<IActionResult> GetActualClaimDetails([FromBody] ActualClaimDetailReq request)
         {

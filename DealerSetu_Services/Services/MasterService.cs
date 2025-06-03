@@ -1,5 +1,4 @@
-﻿//using Azure.Storage.Blobs;
-using DealerSetu.Repository.Common;
+﻿using DealerSetu.Repository.Common;
 using DealerSetu_Data.Models.HelperModels;
 using DealerSetu_Data.Models.ViewModels;
 using DealerSetu_Repositories.IRepositories;
@@ -25,7 +24,29 @@ namespace DealerSetu_Services.Services
         private readonly Utility _utility;
         private readonly string _storageConnectionString;
         private readonly string _containerName;
-        private const int MaxFileSize = 5 * 1024 * 1024; // 5MB
+        private const int MaxFileSize = 4 * 1024 * 1024; // 4MB
+
+        #region VALIDATION FLAGS - Enable/Disable validations by commenting/uncommenting
+
+        // File Upload Validations
+        private const bool ENABLE_FILE_NULL_CHECK = true;
+        private const bool ENABLE_FILE_SIZE_VALIDATION = true;
+        private const bool ENABLE_FILE_EXTENSION_VALIDATION = true;
+        private const bool ENABLE_FILE_SIGNATURE_VALIDATION = true;
+        private const bool ENABLE_FILE_CONTENT_VALIDATION = true;
+
+        // Data Input Validations
+        private const bool ENABLE_ROLE_ID_VALIDATION = true;
+        private const bool ENABLE_USER_ID_VALIDATION = true;
+        private const bool ENABLE_EMAIL_FORMAT_VALIDATION = true;
+        private const bool ENABLE_MALICIOUS_CONTENT_CHECK = true;
+        private const bool ENABLE_ALPHANUMERIC_VALIDATION = true;
+
+        // Business Logic Validations
+        private const bool ENABLE_EMPTY_DATA_CHECK = true;
+        private const bool ENABLE_DUPLICATE_CHECK = false; // Can be enabled later if needed
+
+        #endregion
 
         public MasterService(
             IMasterRepository masterRepository,
@@ -51,6 +72,8 @@ namespace DealerSetu_Services.Services
 
             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
         }
+
+        #region MAIN SERVICE METHODS
 
         public async Task<ServiceResponse> EmployeeMasterService(string keyword, string role, int pageIndex, int pageSize)
         {
@@ -119,23 +142,25 @@ namespace DealerSetu_Services.Services
 
         public async Task<ServiceResponse> ProcessEmployeeExcelFile(IFormFile file, string role)
         {
-            if (file == null || file.Length == 0)
-                return CreateResponse(true, "No file uploaded or empty file.", "400");
+            // VALIDATION BLOCK 1: File Upload Validations
+            var fileValidationResult = ValidateFileUpload(file);
+            if (fileValidationResult != null)
+                return fileValidationResult;
 
-            if (!int.TryParse(role, out int roleId))
-                return CreateResponse(true, "Invalid role ID format.", "400");
+            // VALIDATION BLOCK 2: Role ID Validation
+            var roleValidationResult = ValidateRoleId(role);
+            if (roleValidationResult != null)
+                return roleValidationResult;
 
-            // Validate file format and content
-            var validationResult = await _fileValidationService.ValidateFile(file);
-            if ((bool)validationResult.isError)
-                return validationResult;
+            // VALIDATION BLOCK 3: File Content Validations
+            var contentValidationResult = await ValidateFileContent(file);
+            if (contentValidationResult != null)
+                return contentValidationResult;
 
-            var employeeValidation = await _fileValidationService.ValidateEmployeeExcel(file);
-            if (employeeValidation.isError == true)
-                return employeeValidation;
-
-            if (!ValidateExcelFile(file, out string errorMessage))
-                return CreateResponse(true, errorMessage, "400");
+            // VALIDATION BLOCK 4: Excel Format Validation
+            var excelValidationResult = ValidateExcelFormat(file);
+            if (excelValidationResult != null)
+                return excelValidationResult;
 
             EncryptedBlobData blobData = null;
 
@@ -146,10 +171,14 @@ namespace DealerSetu_Services.Services
 
                 // Process the file and save employees
                 var employees = await ProcessEncryptedEmployeeExcelFromBlob(blobData);
-                if (!employees.Any())
-                    return CreateResponse(true, "No valid employee data found in the Excel file.", "400");
+
+                // VALIDATION BLOCK 5: Empty Data Check
+                var dataValidationResult = ValidateProcessedData(employees?.Count ?? 0, "employee");
+                if (dataValidationResult != null)
+                    return dataValidationResult;
 
                 // Process each employee record
+                int.TryParse(role, out int roleId);
                 foreach (var employee in employees)
                 {
                     employee.RoleId = roleId;
@@ -185,20 +214,20 @@ namespace DealerSetu_Services.Services
 
         public async Task<ServiceResponse> ProcessDealerExcelFile(IFormFile file)
         {
-            if (file == null || file.Length == 0)
-                return CreateResponse(true, "No file uploaded or empty file.", "400");
+            // VALIDATION BLOCK 1: File Upload Validations
+            var fileValidationResult = ValidateFileUpload(file);
+            if (fileValidationResult != null)
+                return fileValidationResult;
 
-            // Validate file format and content
-            var validationResult = await _fileValidationService.ValidateFile(file);
-            if ((bool)validationResult.isError)
-                return validationResult;
+            // VALIDATION BLOCK 3: File Content Validations
+            var contentValidationResult = await ValidateFileContent(file, isDealerFile: true);
+            if (contentValidationResult != null)
+                return contentValidationResult;
 
-            var dealerValidation = await _fileValidationService.ValidateDealerExcel(file);
-            if (dealerValidation.isError == true)
-                return dealerValidation;
-
-            if (!ValidateExcelFile(file, out string errorMessage))
-                return CreateResponse(true, errorMessage, "400");
+            // VALIDATION BLOCK 4: Excel Format Validation
+            var excelValidationResult = ValidateExcelFormat(file);
+            if (excelValidationResult != null)
+                return excelValidationResult;
 
             EncryptedBlobData blobData = null;
 
@@ -209,8 +238,11 @@ namespace DealerSetu_Services.Services
 
                 // Process the file and save dealers
                 var dealers = await ProcessEncryptedDealerExcelFromBlob(blobData);
-                if (!dealers.Any())
-                    return CreateResponse(true, "No valid dealer data found in the Excel file.", "400");
+
+                // VALIDATION BLOCK 5: Empty Data Check
+                var dataValidationResult = ValidateProcessedData(dealers?.Count ?? 0, "dealer");
+                if (dataValidationResult != null)
+                    return dataValidationResult;
 
                 // Process each dealer record
                 foreach (var dealer in dealers)
@@ -242,6 +274,287 @@ namespace DealerSetu_Services.Services
                 }
             }
         }
+
+        public async Task<UpdateResult> UpdateEmployeeDetailsService(int? userId, string empName, string email)
+        {
+            try
+            {
+                // VALIDATION BLOCK 6: User ID Validation
+                var userIdValidationResult = ValidateUserId(userId);
+                if (userIdValidationResult != null)
+                    return userIdValidationResult;
+
+                // VALIDATION BLOCK 7: Employee Name Validation
+                var nameValidationResult = ValidateEmployeeName(empName);
+                if (nameValidationResult != null)
+                    return nameValidationResult;
+
+                // VALIDATION BLOCK 8: Email Validation
+                var emailValidationResult = ValidateEmailInput(email);
+                if (emailValidationResult != null)
+                    return emailValidationResult;
+
+                var result = await _masterRepository.UpdateEmployeeDetailsRepo(userId, empName, email);
+                return new UpdateResult
+                {
+                    RowsAffected = result.RowsAffected,
+                    Message = result.Message,
+                    IsSuccess = result.RowsAffected > 0
+                };
+            }
+            catch (Exception ex)
+            {
+                return CreateUpdateErrorResult($"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<UpdateResult> UpdateDealerDetailsService(int? userId, string empName, string location, string district, string zone, string state)
+        {
+            try
+            {
+                // VALIDATION BLOCK 6: User ID Validation
+                var userIdValidationResult = ValidateUserId(userId);
+                if (userIdValidationResult != null)
+                    return userIdValidationResult;
+
+                // VALIDATION BLOCK 9: Dealer Details Validation
+                var dealerDetailsValidationResult = ValidateDealerDetails(empName, location, district, zone, state);
+                if (dealerDetailsValidationResult != null)
+                    return dealerDetailsValidationResult;
+
+                var result = await _masterRepository.UpdateDealerDetailsRepo(userId, empName, location, district, zone, state);
+                return new UpdateResult
+                {
+                    RowsAffected = result.RowsAffected,
+                    Message = result.Message,
+                    IsSuccess = result.RowsAffected > 0
+                };
+            }
+            catch (Exception ex)
+            {
+                return CreateUpdateErrorResult($"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<string> DeleteUserService(int userId)
+        {
+            if (userId <= 0)
+                throw new ArgumentException("Invalid user ID", nameof(userId));
+
+            try
+            {
+                return await _masterRepository.DeleteUserRepo(userId);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("An error occurred while deleting the user.", ex);
+            }
+        }
+
+        #endregion
+
+        #region VALIDATION METHODS - Modular and Easy to Enable/Disable
+
+        /// <summary>
+        /// VALIDATION BLOCK 1: File Upload Basic Validations
+        /// Comment out specific validations to disable them
+        /// </summary>
+        private ServiceResponse ValidateFileUpload(IFormFile file)
+        {
+            // Validation 1.1: File Null Check
+            if (ENABLE_FILE_NULL_CHECK)
+            {
+                if (file == null || file.Length == 0)
+                    return CreateResponse(true, "No file uploaded or empty file.", "400");
+            }
+
+            // Validation 1.2: File Size Check
+            if (ENABLE_FILE_SIZE_VALIDATION)
+            {
+                if (file?.Length > MaxFileSize)
+                    return CreateResponse(true, "File size exceeds the maximum limit of 5MB.", "400");
+            }
+
+            return null; // No validation errors
+        }
+
+        /// <summary>
+        /// VALIDATION BLOCK 2: Role ID Validation
+        /// </summary>
+        private ServiceResponse ValidateRoleId(string role)
+        {
+            if (ENABLE_ROLE_ID_VALIDATION)
+            {
+                if (!int.TryParse(role, out int roleId))
+                    return CreateResponse(true, "Invalid role ID format.", "400");
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// VALIDATION BLOCK 3: File Content Validations
+        /// </summary>
+        private async Task<ServiceResponse> ValidateFileContent(IFormFile file, bool isDealerFile = false)
+        {
+            if (ENABLE_FILE_CONTENT_VALIDATION)
+            {
+                // Generic file validation
+                var validationResult = await _fileValidationService.ValidateFile(file);
+                if ((bool)validationResult.isError)
+                    return validationResult;
+
+                // Specific content validation based on file type
+                if (isDealerFile)
+                {
+                    var dealerValidation = await _fileValidationService.ValidateDealerExcel(file);
+                    if (dealerValidation.isError == true)
+                        return dealerValidation;
+                }
+                else
+                {
+                    var employeeValidation = await _fileValidationService.ValidateEmployeeExcel(file);
+                    if (employeeValidation.isError == true)
+                        return employeeValidation;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// VALIDATION BLOCK 4: Excel Format Validation
+        /// </summary>
+        private ServiceResponse ValidateExcelFormat(IFormFile file)
+        {
+            if (ENABLE_FILE_EXTENSION_VALIDATION || ENABLE_FILE_SIGNATURE_VALIDATION)
+            {
+                if (!ValidateExcelFile(file, out string errorMessage))
+                    return CreateResponse(true, errorMessage, "400");
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// VALIDATION BLOCK 5: Processed Data Validation
+        /// </summary>
+        private ServiceResponse ValidateProcessedData(int dataCount, string dataType)
+        {
+            if (ENABLE_EMPTY_DATA_CHECK)
+            {
+                if (dataCount == 0)
+                    return CreateResponse(true, $"No valid {dataType} data found in the Excel file.", "400");
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// VALIDATION BLOCK 6: User ID Validation
+        /// </summary>
+        private UpdateResult ValidateUserId(int? userId)
+        {
+            if (ENABLE_USER_ID_VALIDATION)
+            {
+                if (!userId.HasValue)
+                    return CreateUpdateErrorResult("UserId cannot be null");
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// VALIDATION BLOCK 7: Employee Name Validation
+        /// </summary>
+        private UpdateResult ValidateEmployeeName(string empName)
+        {
+            if (!string.IsNullOrEmpty(empName))
+            {
+                // Validation 7.1: Malicious Content Check
+                if (ENABLE_MALICIOUS_CONTENT_CHECK)
+                {
+                    if (_fileValidationService.ContainsMaliciousPatterns(empName))
+                        return CreateUpdateErrorResult("Employee name contains potentially malicious content");
+                }
+
+                // Validation 7.2: Alphanumeric Validation
+                if (ENABLE_ALPHANUMERIC_VALIDATION)
+                {
+                    if (!_fileValidationService.IsAlphanumericWithSpace(empName))
+                        return CreateUpdateErrorResult("Employee name must contain only letters, numbers and spaces");
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// VALIDATION BLOCK 8: Email Validation
+        /// </summary>
+        private UpdateResult ValidateEmailInput(string email)
+        {
+            if (!string.IsNullOrEmpty(email))
+            {
+                // Validation 8.1: Malicious Content Check
+                if (ENABLE_MALICIOUS_CONTENT_CHECK)
+                {
+                    if (_fileValidationService.ContainsMaliciousPatterns(email))
+                        return CreateUpdateErrorResult("Email contains potentially malicious content");
+                }
+
+                // Validation 8.2: Email Format Validation
+                if (ENABLE_EMAIL_FORMAT_VALIDATION)
+                {
+                    if (!_utility.IsValidEmail(email))
+                        return CreateUpdateErrorResult("Invalid email format");
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// VALIDATION BLOCK 9: Dealer Details Validation
+        /// </summary>
+        private UpdateResult ValidateDealerDetails(string empName, string location, string district, string zone, string state)
+        {
+            var parametersToValidate = new Dictionary<string, (string Value, string Name)>
+            {
+                { "EmpName", (empName, "Employee Name") },
+                { "Location", (location, "Location") },
+                { "District", (district, "District") },
+                { "Zone", (zone, "Zone") },
+                { "State", (state, "State") }
+            };
+
+            foreach (var param in parametersToValidate)
+            {
+                // Skip null values - they will remain unchanged
+                if (string.IsNullOrWhiteSpace(param.Value.Value))
+                    continue;
+
+                // Validation 9.1: Malicious Content Check
+                if (ENABLE_MALICIOUS_CONTENT_CHECK)
+                {
+                    if (_fileValidationService.ContainsMaliciousPatterns(param.Value.Value))
+                        return CreateUpdateErrorResult($"{param.Value.Name} contains potentially malicious content");
+                }
+
+                // Validation 9.2: Alphanumeric Validation
+                if (ENABLE_ALPHANUMERIC_VALIDATION)
+                {
+                    if (!_fileValidationService.IsAlphanumericWithSpace(param.Value.Value))
+                        return CreateUpdateErrorResult($"{param.Value.Name} must contain only letters, numbers and spaces");
+                }
+            }
+
+            return null;
+        }
+
+        #endregion
+
+        #region EXISTING METHODS - Keeping original implementation
 
         public async Task<List<EmployeeModel>> ProcessEncryptedEmployeeExcelFromBlob(EncryptedBlobData blobData)
         {
@@ -326,31 +639,26 @@ namespace DealerSetu_Services.Services
                 return false;
             }
 
-            // Check file extension
-            var allowedExtensions = new[] { ".xlsx", ".xls" };
-            var extension = Path.GetExtension(file.FileName).ToLower();
-            if (!allowedExtensions.Contains(extension))
+            // Validation: File Extension Check
+            if (ENABLE_FILE_EXTENSION_VALIDATION)
             {
-                errorMessage = "Invalid file format. Only Excel files (.xlsx, .xls) are allowed.";
-                return false;
-            }
-
-            // Check file size
-            if (file.Length > MaxFileSize)
-            {
-                errorMessage = "File size exceeds the maximum limit of 5MB.";
-                return false;
-            }
-
-            // Only perform signature check for .xlsx files
-            if (extension == ".xlsx")
-            {
-                // Validate file signature
-                var fileSignature = GetFileSignature(file);
-                if (!IsValidExcelFileSignature(fileSignature))
+                var allowedExtensions = new[] { ".xlsx", ".xls" };
+                var extension = Path.GetExtension(file.FileName).ToLower();
+                if (!allowedExtensions.Contains(extension))
                 {
-                    errorMessage = "Invalid Excel file signature.";
+                    errorMessage = "Invalid file format. Only Excel files (.xlsx, .xls) are allowed.";
                     return false;
+                }
+
+                // Validation: File Signature Check (only for .xlsx files)
+                if (ENABLE_FILE_SIGNATURE_VALIDATION && extension == ".xlsx")
+                {
+                    var fileSignature = GetFileSignature(file);
+                    if (!IsValidExcelFileSignature(fileSignature))
+                    {
+                        errorMessage = "Invalid Excel file signature.";
+                        return false;
+                    }
                 }
             }
 
@@ -422,110 +730,7 @@ namespace DealerSetu_Services.Services
             return $"{blob.Uri}?{sasToken}";
         }
 
-        public async Task<UpdateResult> UpdateEmployeeDetailsService(int? userId, string empName, string email)
-        {
-            try
-            {
-                // Validate userId
-                if (!userId.HasValue)
-                    return CreateUpdateErrorResult("UserId cannot be null");
-
-                // Validate employee name (if provided)
-                if (!string.IsNullOrEmpty(empName))
-                {
-                    if (_fileValidationService.ContainsMaliciousPatterns(empName))
-                        return CreateUpdateErrorResult("Employee name contains potentially malicious content");
-
-                    if (!_fileValidationService.IsAlphanumericWithSpace(empName))
-                        return CreateUpdateErrorResult("Employee name must contain only letters, numbers and spaces");
-                }
-
-                // Validate email (if provided)
-                if (!string.IsNullOrEmpty(email))
-                {
-                    if (_fileValidationService.ContainsMaliciousPatterns(email))
-                        return CreateUpdateErrorResult("Email contains potentially malicious content");
-
-                    if (!_utility.IsValidEmail(email))
-                        return CreateUpdateErrorResult("Invalid email format");
-                }
-
-                var result = await _masterRepository.UpdateEmployeeDetailsRepo(userId, empName, email);
-                return new UpdateResult
-                {
-                    RowsAffected = result.RowsAffected,
-                    Message = result.Message,
-                    IsSuccess = result.RowsAffected > 0
-                };
-            }
-            catch (Exception ex)
-            {
-                return CreateUpdateErrorResult($"An error occurred: {ex.Message}");
-            }
-        }
-
-        public async Task<UpdateResult> UpdateDealerDetailsService(int? userId, string empName, string location, string district, string zone, string state)
-        {
-            try
-            {
-                // Validate userId first
-                if (!userId.HasValue)
-                    return CreateUpdateErrorResult("User ID cannot be null");
-
-                // Create a dictionary of parameters to validate
-                var parametersToValidate = new Dictionary<string, (string Value, string Name)>
-                {
-                    { "EmpName", (empName, "Employee Name") },
-                    { "Location", (location, "Location") },
-                    { "District", (district, "District") },
-                    { "Zone", (zone, "Zone") },
-                    { "State", (state, "State") }
-                };
-
-                // Validate each parameter
-                foreach (var param in parametersToValidate)
-                {
-                    // Skip null values - they will remain unchanged
-                    if (string.IsNullOrWhiteSpace(param.Value.Value))
-                        continue;
-
-                    // Check for malicious content
-                    if (_fileValidationService.ContainsMaliciousPatterns(param.Value.Value))
-                        return CreateUpdateErrorResult($"{param.Value.Name} contains potentially malicious content");
-
-                    // Validate alphanumeric with spaces
-                    if (!_fileValidationService.IsAlphanumericWithSpace(param.Value.Value))
-                        return CreateUpdateErrorResult($"{param.Value.Name} must contain only letters, numbers and spaces");
-                }
-
-                var result = await _masterRepository.UpdateDealerDetailsRepo(userId, empName, location, district, zone, state);
-                return new UpdateResult
-                {
-                    RowsAffected = result.RowsAffected,
-                    Message = result.Message,
-                    IsSuccess = result.RowsAffected > 0
-                };
-            }
-            catch (Exception ex)
-            {
-                return CreateUpdateErrorResult($"An error occurred: {ex.Message}");
-            }
-        }
-
-        public async Task<string> DeleteUserService(int userId)
-        {
-            if (userId <= 0)
-                throw new ArgumentException("Invalid user ID", nameof(userId));
-
-            try
-            {
-                return await _masterRepository.DeleteUserRepo(userId);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("An error occurred while deleting the user.", ex);
-            }
-        }
+        #endregion
 
         #region Private Helper Methods
 
@@ -557,9 +762,6 @@ namespace DealerSetu_Services.Services
 
             return signature;
         }
-
-
-
 
         private bool IsValidExcelFileSignature(byte[] signature)
         {
@@ -617,4 +819,101 @@ namespace DealerSetu_Services.Services
 
         #endregion
     }
+
+    #region VALIDATION CONFIGURATION GUIDE
+    /*
+     * ========================================
+     * VALIDATION CONFIGURATION GUIDE
+     * ========================================
+     * 
+     * This service uses modular validation approach. To enable/disable validations:
+     * 
+     * METHOD 1: Using Validation Flags (Recommended)
+     * ----------------------------------------------
+     * Change the boolean constants at the top of the class:
+     * - Set to 'true' to enable validation
+     * - Set to 'false' to disable validation
+     * 
+     * Example:
+     * private const bool ENABLE_FILE_SIZE_VALIDATION = false; // Disables file size check
+     * 
+     * METHOD 2: Commenting Out Validation Blocks
+     * ------------------------------------------
+     * Comment out entire validation blocks in the main methods:
+     * 
+     * Example:
+     * // VALIDATION BLOCK 1: File Upload Validations
+     * // var fileValidationResult = ValidateFileUpload(file);
+     * // if (fileValidationResult != null)
+     * //     return fileValidationResult;
+     * 
+     * METHOD 3: Commenting Individual Validations
+     * -------------------------------------------
+     * Comment out specific validation checks within validation methods:
+     * 
+     * Example in ValidateFileUpload method:
+     * // Validation 1.1: File Null Check
+     * // if (ENABLE_FILE_NULL_CHECK)
+     * // {
+     * //     if (file == null || file.Length == 0)
+     * //         return CreateResponse(true, "No file uploaded or empty file.", "400");
+     * // }
+     * 
+     * VALIDATION BLOCKS AVAILABLE:
+     * ============================
+     * BLOCK 1: File Upload Basic Validations (file null, size)
+     * BLOCK 2: Role ID Validation
+     * BLOCK 3: File Content Validations (malicious content, format)
+     * BLOCK 4: Excel Format Validation (extension, signature)
+     * BLOCK 5: Processed Data Validation (empty data check)
+     * BLOCK 6: User ID Validation
+     * BLOCK 7: Employee Name Validation (malicious content, alphanumeric)
+     * BLOCK 8: Email Validation (format, malicious content)
+     * BLOCK 9: Dealer Details Validation (all dealer fields)
+     * 
+     * VALIDATION FLAGS AVAILABLE:
+     * ===========================
+     * File Upload Validations:
+     * - ENABLE_FILE_NULL_CHECK
+     * - ENABLE_FILE_SIZE_VALIDATION
+     * - ENABLE_FILE_EXTENSION_VALIDATION
+     * - ENABLE_FILE_SIGNATURE_VALIDATION
+     * - ENABLE_FILE_CONTENT_VALIDATION
+     * 
+     * Data Input Validations:
+     * - ENABLE_ROLE_ID_VALIDATION
+     * - ENABLE_USER_ID_VALIDATION
+     * - ENABLE_EMAIL_FORMAT_VALIDATION
+     * - ENABLE_MALICIOUS_CONTENT_CHECK
+     * - ENABLE_ALPHANUMERIC_VALIDATION
+     * 
+     * Business Logic Validations:
+     * - ENABLE_EMPTY_DATA_CHECK
+     * - ENABLE_DUPLICATE_CHECK (currently disabled, can be enabled)
+     * 
+     * QUICK DISABLE EXAMPLES:
+     * =======================
+     * 
+     * 1. Disable file size validation:
+     *    private const bool ENABLE_FILE_SIZE_VALIDATION = false;
+     * 
+     * 2. Disable email format validation:
+     *    private const bool ENABLE_EMAIL_FORMAT_VALIDATION = false;
+     * 
+     * 3. Disable all malicious content checks:
+     *    private const bool ENABLE_MALICIOUS_CONTENT_CHECK = false;
+     * 
+     * 4. Comment out entire validation block:
+     *    // var fileValidationResult = ValidateFileUpload(file);
+     *    // if (fileValidationResult != null)
+     *    //     return fileValidationResult;
+     * 
+     * ADDING NEW VALIDATIONS:
+     * ======================
+     * 1. Add a new validation flag constant
+     * 2. Create a new validation method following the pattern
+     * 3. Add the validation call in the appropriate main method
+     * 4. Update this documentation
+     */
+    #endregion
 }

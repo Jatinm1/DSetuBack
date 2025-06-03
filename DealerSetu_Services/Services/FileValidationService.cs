@@ -17,7 +17,7 @@ namespace DealerSetu_Services.Services
 {
     public class FileValidationService : IFileValidationService
     {
-        private const long MaxFileSizeBytes = 20 * 1024 * 1024; // 20MB
+        private const long MaxFileSizeBytes = 4 * 1024 * 1024; // 4MB
         private const long MinFileSizeBytes = 1 * 1024; // 1KB
         private static readonly HashSet<string> AllowedExtensions = new HashSet<string> { ".xlsx", ".xls" };
         private readonly Utility _utility;
@@ -113,16 +113,19 @@ namespace DealerSetu_Services.Services
                 var contentSecurityResponse = await ValidateFileContentAsync(file);
                 if ((bool)contentSecurityResponse.isError) return contentSecurityResponse;
 
-                // Excel-specific validation
-                string extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-                if (AllowedExtensions.Contains(extension))
-                {
-                    var excelValidation = await ValidateExcelStructureAsync(file);
-                    if ((bool)excelValidation.isError) return excelValidation;
+                //HAVE TO ADD THIS AGAIN
+                //COMMENTED BEACUSE CLOUDMERSIVE DOES NOT WORK ON LOCAL
+                //****************************************************************************************************************
+                //// Excel-specific validation
+                //string extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+                //if (AllowedExtensions.Contains(extension))
+                //{
+                //    var excelValidation = await ValidateExcelStructureAsync(file);
+                //    if ((bool)excelValidation.isError) return excelValidation;
 
-                    // Antivirus scan only for Excel files
-                    return await ScanFileWithDefenderAsync(file);
-                }
+                //    // Antivirus scan only for Excel files
+                //    return await ScanFileWithDefenderAsync(file);
+                //}
 
                 return CreateSuccessResponse(file);
             }
@@ -203,50 +206,55 @@ namespace DealerSetu_Services.Services
         //    }
         //}
 
-        public async Task<ServiceResponse> ScanFileWithDefenderAsync(IFormFile file)
-        {
-            var tempFilePath = Path.GetTempFileName();
-            try
-            {
-                // Save IFormFile to temp file
-                using (var stream = new FileStream(tempFilePath, FileMode.Create))
-                {
-                    await file.CopyToAsync(stream);
-                }
 
-                // Set API Key
-                Configuration.Default.AddApiKey("Apikey", "05768ba4-1915-463b-8193-973daed585e0");
 
-                var apiInstance = new ScanApi();
-                using (var fs = System.IO.File.OpenRead(tempFilePath))
-                {
-                    var result = apiInstance.ScanFile(fs);
+        //HAVE TO ADD THIS AGAIN
+        //COMMENTED BEACUSE CLOUDMERSIVE DOES NOT WORK ON LOCAL
+        //*****************************************************************************************************
+        //public async Task<ServiceResponse> ScanFileWithDefenderAsync(IFormFile file)
+        //{
+        //    var tempFilePath = Path.GetTempFileName();
+        //    try
+        //    {
+        //        // Save IFormFile to temp file
+        //        using (var stream = new FileStream(tempFilePath, FileMode.Create))
+        //        {
+        //            await file.CopyToAsync(stream);
+        //        }
 
-                    if (result.FoundViruses != null && result.FoundViruses.Count > 0)
-                    {
-                        // Extract virus names for message
-                        var virusNames = result.FoundViruses.Select(v => v.VirusName).ToList();
-                        var virusListString = string.Join(", ", virusNames);
+        //        // Set API Key
+        //        Configuration.Default.AddApiKey("Apikey", "Mykey");
 
-                        return CreateErrorResponse(
-                            "Malicious file detected",
-                            "MALICIOUS_FILE_DETECTED",
-                            $"Virus(es) found: {virusListString}"
-                        );
-                    }
+        //        var apiInstance = new ScanApi();
+        //        using (var fs = System.IO.File.OpenRead(tempFilePath))
+        //        {
+        //            var result = apiInstance.ScanFile(fs);
 
-                    // Clean file
-                    return CreateSuccessResponse(file);
-                }
-            }
-            finally
-            {
-                if (System.IO.File.Exists(tempFilePath))
-                {
-                    System.IO.File.Delete(tempFilePath);
-                }
-            }
-        }
+        //            if (result.FoundViruses != null && result.FoundViruses.Count > 0)
+        //            {
+        //                // Extract virus names for message
+        //                var virusNames = result.FoundViruses.Select(v => v.VirusName).ToList();
+        //                var virusListString = string.Join(", ", virusNames);
+
+        //                return CreateErrorResponse(
+        //                    "Malicious file detected",
+        //                    "MALICIOUS_FILE_DETECTED",
+        //                    $"Virus(es) found: {virusListString}"
+        //                );
+        //            }
+
+        //            // Clean file
+        //            return CreateSuccessResponse(file);
+        //        }
+        //    }
+        //    finally
+        //    {
+        //        if (System.IO.File.Exists(tempFilePath))
+        //        {
+        //            System.IO.File.Delete(tempFilePath);
+        //        }
+        //    }
+        //}
 
 
         // Add this method to your FileValidationService class
@@ -274,28 +282,32 @@ namespace DealerSetu_Services.Services
                 return response;
             }
 
+
+            //HAVE TO ADD THIS AGAIN
+            //COMMENTED BEACUSE CLOUDMERSIVE DOES NOT WORK ON LOCAL
+            //**************************************************************************************************
             // Step 3: Check the Malicious Content
-            try
-            {
-                // Scan the file directly without conversion
-                var maliciousCheck = await ScanFileWithDefenderAsync(imageFile);
-                if ((bool)maliciousCheck.isError)
-                {
-                    response.isError = true;
-                    response.Message = "File is not Correct";
-                    response.Code = "302";
-                    response.Status = "Error";
-                    return response;
-                }
-            }
-            catch (Exception ex)
-            {
-                response.isError = true;
-                response.Message = "Invalid request. File Upload Limit Reached. Please try again later.";
-                response.Code = "310";
-                response.Status = "Error";
-                return response;
-            }
+            //try
+            //{
+            //    // Scan the file directly without conversion
+            //    var maliciousCheck = await ScanFileWithDefenderAsync(imageFile);
+            //    if ((bool)maliciousCheck.isError)
+            //    {
+            //        response.isError = true;
+            //        response.Message = "File is not Correct";
+            //        response.Code = "302";
+            //        response.Status = "Error";
+            //        return response;
+            //    }
+            //}
+            //catch (Exception ex)
+            //{
+            //    response.isError = true;
+            //    response.Message = "Invalid request. File Upload Limit Reached. Please try again later.";
+            //    response.Code = "310";
+            //    response.Status = "Error";
+            //    return response;
+            //}
 
             // If all validations pass
             response.isError = false;
