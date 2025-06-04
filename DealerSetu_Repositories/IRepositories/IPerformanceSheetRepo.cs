@@ -1,0 +1,14 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using DealerSetu_Data.Models.ViewModels;
+
+namespace DealerSetu_Repositories.IRepositories
+{
+    public interface IPerformanceSheetRepo
+    {
+        Task<IEnumerable<DealerModel>> GetTrackingDealersAsync(string? keyword, string month, string fYear, string empNo);
+    }
+}

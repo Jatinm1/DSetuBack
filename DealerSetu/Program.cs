@@ -48,6 +48,8 @@ builder.Services.AddScoped<INewDealerActivityRepository, NewDealerActivityReposi
 builder.Services.AddScoped<INewDealerActivityService, NewDealerActivityService>();
 builder.Services.AddScoped<IRequestRepository, RequestRepository>();
 builder.Services.AddScoped<IRequestService, RequestService>();
+builder.Services.AddScoped<IPerformanceSheetRepo, PerformanceSheetRepo>();
+builder.Services.AddScoped<IPerformanceSheetService, PerformanceSheetService>();
 builder.Services.AddScoped<IBlobStorageService, BlobStorageService>();
 builder.Services.AddSingleton<IEncryptionService, AesEncryptionService>();
 builder.Services.AddSingleton<IFileValidationService, FileValidationService>();
