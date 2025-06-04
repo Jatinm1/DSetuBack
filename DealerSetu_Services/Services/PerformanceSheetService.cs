@@ -21,7 +21,7 @@ namespace DealerSetu_Services.Services
             _logger = logger;
         }
 
-        public async Task<IEnumerable<DealerModel>> GetTrackingDealersAsync(string? keyword, string month, string fYear, string empNo)
+        public async Task<IEnumerable<DealerModel>> GetTrackingDealersAsync(string? keyword, int month, string fYear, string empNo)
         {
             try
             {

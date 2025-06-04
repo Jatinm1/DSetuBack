@@ -12,7 +12,7 @@ namespace DealerSetu_Data.Models.RequestModels
         public string? Keyword { get; set; }
 
         [Required]
-        public string Month { get; set; } = string.Empty;
+        public int Month { get; set; }
 
         [Required]
         public string FYear { get; set; } = string.Empty;

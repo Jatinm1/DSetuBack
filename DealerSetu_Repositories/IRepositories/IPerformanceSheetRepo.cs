@@ -9,6 +9,6 @@ namespace DealerSetu_Repositories.IRepositories
 {
     public interface IPerformanceSheetRepo
     {
-        Task<IEnumerable<DealerModel>> GetTrackingDealersAsync(string? keyword, string month, string fYear, string empNo);
+        Task<IEnumerable<DealerModel>> GetTrackingDealersAsync(string? keyword, int month, string fYear, string empNo);
     }
 }

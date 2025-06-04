@@ -27,7 +27,7 @@ namespace DealerSetu_Repositories.Repositories
                 ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
         }
 
-        public async Task<IEnumerable<DealerModel>> GetTrackingDealersAsync(string? keyword, string month, string fYear, string empNo)
+        public async Task<IEnumerable<DealerModel>> GetTrackingDealersAsync(string? keyword, int month, string fYear, string empNo)
         {
             try
             {
@@ -35,9 +35,10 @@ namespace DealerSetu_Repositories.Repositories
 
                 var parameters = new DynamicParameters();
                 parameters.Add("@Keyword", keyword, DbType.String);
-                parameters.Add("@Month", month, DbType.String);
+                parameters.Add("@Month", month, DbType.Int32); // Fixed here
                 parameters.Add("@FYear", fYear, DbType.String);
                 parameters.Add("@EmpNo", empNo, DbType.String);
+
 
                 var dealers = await connection.QueryAsync<DealerModel>(
                     "sp_PERF_GetTrackingDealers",

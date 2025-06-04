@@ -9,7 +9,7 @@ namespace DealerSetu_Services.IServices
 {
     public interface IPerformanceSheetService
     {
-        Task<IEnumerable<DealerModel>> GetTrackingDealersAsync(string? keyword, string month, string fYear, string empNo);
+        Task<IEnumerable<DealerModel>> GetTrackingDealersAsync(string? keyword, int month, string fYear, string empNo);
 
     }
 }
