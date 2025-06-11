@@ -255,7 +255,7 @@ namespace DealerSetu_Services.Services
                     throw new InvalidOperationException($"Container '{GetContainerName()}' does not exist");
                 }
 
-                var blobList = new List<string>();
+                var blobList = new List<(string Name, DateTimeOffset LastModified)>();
                 BlobContinuationToken continuationToken = null;
 
                 do
@@ -263,7 +263,7 @@ namespace DealerSetu_Services.Services
                     var results = await container.ListBlobsSegmentedAsync(
                         prefix: "",
                         useFlatBlobListing: true,
-                        blobListingDetails: BlobListingDetails.None,
+                        blobListingDetails: BlobListingDetails.Metadata, // Need this to get last modified date
                         maxResults: MAX_BLOB_RESULTS,
                         currentToken: continuationToken,
                         options: null,
@@ -271,15 +271,18 @@ namespace DealerSetu_Services.Services
 
                     continuationToken = results.ContinuationToken;
 
-                    foreach (var blob in results.Results)
+                    foreach (var blob in results.Results.OfType<CloudBlockBlob>())
                     {
                         var blobName = ExtractBlobName(blob.Uri, container.Uri);
-                        blobList.Add(blobName);
+                        blobList.Add((blobName, blob.Properties.LastModified.GetValueOrDefault()));
                     }
                 }
                 while (continuationToken != null);
 
-                return blobList;
+                // Sort by LastModified in descending order and return just names
+                return blobList.OrderByDescending(x => x.LastModified)
+                              .Select(x => x.Name)
+                              .ToList();
             }
             catch (Exception ex) when (!(ex is InvalidOperationException))
             {

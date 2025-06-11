@@ -19,7 +19,7 @@ namespace DealerSetu_Services.Services
         // Constants for validation
         private const int MIN_PAGE_INDEX = 0;
         private const int MIN_PAGE_SIZE = 1;
-        private const int MAX_PAGE_SIZE = 1000;
+        private const int MAX_PAGE_SIZE = 100000;
         private const int MIN_FISCAL_YEAR = 2000;
         private const int MAX_FISCAL_YEAR = 3000;
 
@@ -366,22 +366,22 @@ namespace DealerSetu_Services.Services
                     throw new ArgumentException("From date cannot be greater than To date");
                 }
 
-                var dateDifference = filter.To.Value - filter.From.Value;
-                if (dateDifference.TotalDays > 365)
-                {
-                    throw new ArgumentException("Date range cannot exceed 365 days");
-                }
+                //var dateDifference = filter.To.Value - filter.From.Value;
+                //if (dateDifference.TotalDays > 365)
+                //{
+                //    throw new ArgumentException("Date range cannot exceed 365 days");
+                //}
             }
 
-            if (filter.From.HasValue && filter.From.Value > DateTime.Now)
-            {
-                throw new ArgumentException("From date cannot be in the future");
-            }
+            //if (filter.From.HasValue && filter.From.Value > DateTime.Now)
+            //{
+            //    throw new ArgumentException("From date cannot be in the future");
+            //}
 
-            if (filter.To.HasValue && filter.To.Value > DateTime.Now)
-            {
-                throw new ArgumentException("To date cannot be in the future");
-            }
+            //if (filter.To.HasValue && filter.To.Value > DateTime.Now)
+            //{
+            //    throw new ArgumentException("To date cannot be in the future");
+            //}
         }
 
         /// <summary>

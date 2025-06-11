@@ -113,10 +113,10 @@ namespace DealerSetu.Controllers
                     return BadRequest(new { error = "Filename cannot be empty or null." });
                 }
 
-                if (!_utility.IsValidFileName(fileName))
-                {
-                    return BadRequest(new { error = "Invalid filename format." });
-                }
+                //if (!_utility.IsValidFileName(fileName))
+                //{
+                //    return BadRequest(new { error = "Invalid filename format." });
+                //}
 
                 var downloadUrl = await _whiteVillageService.WhiteVillageDownloadService(fileName);
 

@@ -20,10 +20,11 @@ namespace DealerSetu_Services.IServices
         Task<ServiceResponse> DemoTractorApproveRejectService(FilterModel filter);
         Task<ServiceResponse> UpdateDemoReqService(DemoReqUpdateModel request, string empNo);
         Task<ServiceResponse> DemoActualClaimListService(FilterModel filter);
-        Task<ServiceResponse> AddDemoActualClaimService(DemoReqModel request);
+        Task<ServiceResponse> AddDemoActualClaimService(DemoReqModel request,bool BasicFlag);
         Task<ServiceResponse> GetDemoTractorDocService(FilterModel filter);
         Task<ServiceResponse> DemoTractorApproveRejectClaimService(FilterModel filter);
         Task<ServiceResponse> AddDemoRemarksService(AddDemoTracRemarksModel request);
+        Task<ServiceResponse> UpdateDemoActualClaimService(DemoReqModel request,bool BasicFlag);
 
     }
 }

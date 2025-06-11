@@ -554,7 +554,8 @@ namespace DealerSetu_Services.Services
 
             foreach (var field in fieldsToValidate)
             {
-                if (_fileValidationService.ContainsMaliciousPatterns(field.Value))
+                if (!string.IsNullOrWhiteSpace(field.Value) &&
+                    _fileValidationService.ContainsMaliciousPatterns(field.Value))
                 {
                     string displayName = FormatPropertyName(field.Key);
                     return ValidationResult.Failed($"{displayName} contains potentially malicious content");
@@ -570,25 +571,28 @@ namespace DealerSetu_Services.Services
         /// <returns>Validation result indicating success or failure</returns>
         private ValidationResult ValidateActualClaimUpdateForMaliciousContent(ActualClaimUpdateModel request)
         {
-            var fieldsToValidate = new Dictionary<string, string>
-            {
-                { nameof(request.ActualExpenses), request.ActualExpenses },
-                { nameof(request.DateOfActivity), request.DateOfActivity },
-                { nameof(request.CustomerContacted), request.CustomerContacted },
-                { nameof(request.Enquiry), request.Enquiry },
-                { nameof(request.Delivery), request.Delivery }
-            };
+            var fieldsToValidate = new Dictionary<string, string?>
+    {
+        { nameof(request.ActualExpenses), request.ActualExpenses },
+        { nameof(request.DateOfActivity), request.DateOfActivity },
+        { nameof(request.CustomerContacted), request.CustomerContacted },
+        { nameof(request.Enquiry), request.Enquiry },
+        { nameof(request.Delivery), request.Delivery }
+    };
 
             foreach (var field in fieldsToValidate)
             {
-                if (_fileValidationService.ContainsMaliciousPatterns(field.Value))
+                if (!string.IsNullOrWhiteSpace(field.Value) &&
+                    _fileValidationService.ContainsMaliciousPatterns(field.Value))
                 {
                     string displayName = FormatPropertyName(field.Key);
                     return ValidationResult.Failed($"{displayName} contains potentially malicious content");
                 }
             }
+
             return ValidationResult.Success();
         }
+
 
 
 

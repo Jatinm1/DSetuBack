@@ -14,6 +14,6 @@ namespace DealerSetu_Repositories.IRepositories
         Task<List<RequestTypeFilterModel>> RequestTypeFilterRepo();
         Task<List<HPCategoryFilterModel>> HPCategoryFilterRepo();
         Task<(List<RequestModel> requests, int TotalCount)> RequestListRepo(FilterModel filter, int pageIndex, int pageSize);
-        Task<RequestSubmissionResult> SubmitRequestAsync(string requestTypeId, string message, string hpCategory, string empNo);
+        Task<RequestSubmissionResult> SubmitRequestAsync(RequestSubmissionModel request, string empNo,string roleId);
     }
 }

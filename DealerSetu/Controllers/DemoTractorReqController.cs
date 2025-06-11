@@ -6,6 +6,7 @@ using DealerSetu_Data.Models.ViewModels;
 using DealerSetu_Services.IServices;
 using DealerSetu_Services.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 
 namespace DealerSetu.Controllers
 {
@@ -151,6 +152,16 @@ namespace DealerSetu.Controllers
                 }
 
                 var result = await _demoService.SubmitDemoReqService(request, empNo);
+
+                if (result.isError == true)
+                {
+                    // Return 400 if it's a known error (e.g., validation), else 500
+                    if (result.Code == "400")
+                        return BadRequest(result);
+                    else
+                        return StatusCode(StatusCodes.Status500InternalServerError, result);
+                }
+
                 return Ok(result);
             }
             catch (Exception ex)
@@ -159,6 +170,7 @@ namespace DealerSetu.Controllers
                 _fileLogger.LogError("DemoRequestController", "Error in SubmitDemoRequest", ex);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request");
             }
+
         }
 
         [HttpPost("GetDemoReqData")]
@@ -355,7 +367,7 @@ namespace DealerSetu.Controllers
                 }
 
                 // Pass the DemoReqModel instead of DemoDocUploadModel to your service
-                var result = await _demoService.AddDemoActualClaimService(demoReqModel);
+                var result = await _demoService.AddDemoActualClaimService(demoReqModel,request.BasicFlag);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -467,7 +479,7 @@ namespace DealerSetu.Controllers
                 }
 
                 // Pass the DemoReqModel instead of DemoDocUploadModel to your service
-                var result = await _demoService.AddDemoActualClaimService(demoReqModel);
+                var result = await _demoService.AddDemoActualClaimService(demoReqModel,request.BasicFlag);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -476,6 +488,128 @@ namespace DealerSetu.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
+
+        [HttpPost("UpdateDemoActualClaim")]
+        public async Task<IActionResult> UpdateDemoActualClaim([FromForm] DemoUpdateModel request)
+        {
+            try
+            {
+                var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
+                // Validate that RequestId is provided as it's required for updates
+
+
+                if (request.RequestId == null || request.RequestId == 0)
+                {
+                    return StatusCode(400, "RequestId is required for update operations");
+
+                }
+
+                // Define all possible image properties to process (all optional for updates)
+                var imagesToProcess = new Dictionary<string, IFormFile>
+        {
+            // Basic documents
+            { nameof(DemoUpdateModel.InvoiceFile), request.InvoiceFile },
+            { nameof(DemoUpdateModel.RCFile), request.RCFile },
+            { nameof(DemoUpdateModel.InsuranceFile), request.InsuranceFile },
+            
+            // Additional documents
+            { nameof(DemoUpdateModel.FileSale), request.FileSale }, //Sale Document of Tractor
+            { nameof(DemoUpdateModel.FileTractor), request.FileTractor }, //Format for Claiming
+            { nameof(DemoUpdateModel.FilePicture), request.FilePicture }, //Picture of Hour Reading
+            { nameof(DemoUpdateModel.FilePicTractor), request.FilePicTractor }, //Picture of Tractor
+            { nameof(DemoUpdateModel.LogDemonsFile), request.LogDemonsFile },
+            { nameof(DemoUpdateModel.Affidavitfile), request.Affidavitfile },
+            { nameof(DemoUpdateModel.SaleDeedfile), request.SaleDeedfile }
+        };
+
+                #region Validation For Image Files (Only validate files that are provided)
+                // Validate each image that is provided (skip null files since they're optional in updates)
+                foreach (var imageEntry in imagesToProcess.Where(x => x.Value != null))
+                {
+                    var image = imageEntry.Value;
+                    var validationResult = await _fileValidationService.ValidateImageAsync(image, MaxFileSize);
+                    if ((bool)validationResult.isError)
+                    {
+                        return StatusCode(int.Parse(validationResult.Code), new { Message = validationResult.Message });
+                    }
+                }
+                #endregion
+
+                // Create a DemoReqModel instance for update
+                var demoReqModel = new DemoReqModel
+                {
+                    DemoRequestId = request.RequestId,
+                    EmpNo = empNo,                    
+                };
+
+                // Only set non-file properties if they are provided
+                if (!string.IsNullOrEmpty(request.Model))
+                    demoReqModel.Model = request.Model;
+
+                if (!string.IsNullOrEmpty(request.ChassisNo))
+                    demoReqModel.ChassisNo = request.ChassisNo;
+
+                if (!string.IsNullOrEmpty(request.EngineNo))
+                    demoReqModel.EngineNo = request.EngineNo;
+
+                if (!string.IsNullOrEmpty(request.DateOfBilling))
+                    demoReqModel.DateOfBilling = request.DateOfBilling;
+
+                // Upload provided images to blob storage and map to DemoReqModel fields
+                foreach (var imageEntry in imagesToProcess.Where(x => x.Value != null))
+                {
+                    var propertyName = imageEntry.Key;
+                    var image = imageEntry.Value;
+
+                    // Upload to blob storage and get URL string
+                    string blobUrl = await _blobStorageService.UploadFileAsync(image);
+
+                    // Map to appropriate property in DemoReqModel based on the property name
+                    switch (propertyName)
+                    {
+                        case nameof(DemoUpdateModel.InvoiceFile):
+                            demoReqModel.InvoiceFile = blobUrl;
+                            break;
+                        case nameof(DemoUpdateModel.RCFile):
+                            demoReqModel.RCFile = blobUrl;
+                            break;
+                        case nameof(DemoUpdateModel.InsuranceFile):
+                            demoReqModel.InsuranceFile = blobUrl;
+                            break;
+                        case nameof(DemoUpdateModel.FileSale): //Sale Document of Tractor
+                            demoReqModel.FileSale = blobUrl;
+                            break;
+                        case nameof(DemoUpdateModel.FileTractor): //Format for Claiming
+                            demoReqModel.FileTractor = blobUrl;
+                            break;
+                        case nameof(DemoUpdateModel.FilePicture): //Picture of Hour Reading
+                            demoReqModel.FilePicture = blobUrl;
+                            break;
+                        case nameof(DemoUpdateModel.FilePicTractor): //Picture of Tractor
+                            demoReqModel.FilePicTractor = blobUrl;
+                            break;
+                        case nameof(DemoUpdateModel.LogDemonsFile):
+                            demoReqModel.LogDemons = blobUrl;
+                            break;
+                        case nameof(DemoUpdateModel.Affidavitfile):
+                            demoReqModel.Affidavit = blobUrl;
+                            break;
+                        case nameof(DemoUpdateModel.SaleDeedfile):
+                            demoReqModel.SaleDeed = blobUrl;
+                            break;
+                    }
+                }
+
+                // Call update service method instead of add
+                var result = await _demoService.UpdateDemoActualClaimService(demoReqModel,request.BasicFlag);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _fileLogger.LogError("DemoRequestController", "Error in UpdateDemoActualClaim", ex);
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }        
 
         [HttpPost("GetDemoTractorDoc")]
         public async Task<IActionResult> DemoTractorDoc([FromBody] DemoTractorDocReq request)

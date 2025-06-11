@@ -67,15 +67,19 @@ namespace DealerSetu_Repositories.Repositories
         public async Task<(List<DemoTractorResponseModel> PendingDemoTractorList, int TotalCount)> DemoTractorPendingRepo(
             FilterModel filter, int pageIndex, int pageSize)
         {
+            var FromDate = filter.From?.ToString("yyyy-MM-dd") ?? null;
+            var ToDate = filter.To?.ToString("yyyy-MM-dd") ?? null;
+
             using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync();
+
 
             var parameters = new DynamicParameters();
             parameters.Add("@EmpNo", filter.EmpNo);
             parameters.Add("@RoleId", filter.RoleId);
             parameters.Add("@RequestNo", filter.RequestNo);
-            parameters.Add("@From", filter.From);
-            parameters.Add("@To", filter.To);
+            parameters.Add("@From",FromDate);
+            parameters.Add("@To", ToDate);
             parameters.Add("@PageIndex", pageIndex);
             parameters.Add("@PageSize", pageSize);
 
@@ -255,7 +259,7 @@ namespace DealerSetu_Repositories.Repositories
         /// <summary>
         /// Adds basic demo actual claim with required documents
         /// </summary>
-        public async Task<int> AddBasicDemoActualClaimRepo(DemoReqModel docModel)
+        public async Task<int> AddBasicDemoActualClaimRepo(DemoReqModel docModel,bool BasicFlag)
         {
             using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync();
@@ -270,6 +274,7 @@ namespace DealerSetu_Repositories.Repositories
             parameters.Add("@RCFile", docModel.RCFile);
             parameters.Add("@InsuranceFile", docModel.InsuranceFile);
             parameters.Add("@EmpNo", docModel.EmpNo);
+            parameters.Add("@BasicFlag", BasicFlag);
             parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
             await connection.ExecuteAsync("sp_DEMOTRAC_UploadDemoTractorDocs", parameters, commandType: CommandType.StoredProcedure);
@@ -280,7 +285,7 @@ namespace DealerSetu_Repositories.Repositories
         /// <summary>
         /// Adds all demo actual claim documents
         /// </summary>
-        public async Task<int> AddAllDemoActualClaimRepo(DemoReqModel docModel)
+        public async Task<int> AddAllDemoActualClaimRepo(DemoReqModel docModel, bool BasicFlag)
         {
             using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync();
@@ -295,9 +300,62 @@ namespace DealerSetu_Repositories.Repositories
             parameters.Add("@AffidavitFile", docModel.Affidavit);
             parameters.Add("@SaleDeedFile", docModel.SaleDeed);
             parameters.Add("@EmpNo", docModel.EmpNo);
+            parameters.Add("@BasicFlag", BasicFlag);
             parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
             await connection.ExecuteAsync("sp_DEMOTRAC_UploadDemoTractorDocs", parameters, commandType: CommandType.StoredProcedure);
+
+            return parameters.Get<int>("@Result");
+        }
+
+
+        public async Task<int> UpdateDemoActualClaimRepo(DemoReqModel docModel, bool BasicFlag)
+        {
+            using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync();
+
+            var parameters = new DynamicParameters();
+            parameters.Add("@RequestId", docModel.DemoRequestId);
+
+            // Basic fields (nullable for partial updates)
+            parameters.Add("@Model", docModel.Model);
+            parameters.Add("@ChassisNo", docModel.ChassisNo);
+            parameters.Add("@EngineNo", docModel.EngineNo);
+
+            // Handle DateOfBilling conversion only if provided
+            if (!string.IsNullOrEmpty(docModel.DateOfBilling))
+            {
+                parameters.Add("@DateOfBilling",
+                    DateTime.ParseExact(docModel.DateOfBilling, "dd/MM/yyyy", CultureInfo.InvariantCulture));
+            }
+            else
+            {
+                parameters.Add("@DateOfBilling", DBNull.Value);
+            }
+
+            // Basic document files
+            parameters.Add("@InvoiceFile", docModel.InvoiceFile);
+            parameters.Add("@RCFile", docModel.RCFile );
+            parameters.Add("@InsuranceFile", docModel.InsuranceFile);
+
+            // Additional document files
+            parameters.Add("@FileSale", docModel.FileSale);
+            parameters.Add("@FileTractor", docModel.FileTractor);
+            parameters.Add("@FilePicture", docModel.FilePicture);
+            parameters.Add("@FilePicTractor", docModel.FilePicTractor);
+            parameters.Add("@LogDemonsFile", docModel.LogDemons);
+            parameters.Add("@AffidavitFile", docModel.Affidavit);
+            parameters.Add("@SaleDeedFile", docModel.SaleDeed);
+
+            // Audit fields
+            parameters.Add("@EmpNo", docModel.EmpNo);
+            parameters.Add("@BasicFlag", BasicFlag);
+            // Output parameter
+            parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+            await connection.ExecuteAsync("sp_DEMOTRAC_UploadDemoTractorDocs",
+                parameters,
+                commandType: CommandType.StoredProcedure);
 
             return parameters.Get<int>("@Result");
         }

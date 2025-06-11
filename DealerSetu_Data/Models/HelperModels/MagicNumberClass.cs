@@ -13,65 +13,48 @@ namespace DealerSetu_Data.Models.HelperModels
         {
             if (file != null && file.Length > 0)
             {
-                string data = "";
                 using (var ms = new MemoryStream())
                 {
                     file.CopyTo(ms);
                     var fileBytes = ms.ToArray();
-                    data = BitConverter.ToString(fileBytes);
-                    // act on the Base64 data
+
+                    // Read first 8 bytes max for more reliable signature checking
+                    string hexHeader = BitConverter.ToString(fileBytes.Take(8).ToArray());
+
+                    string output = hexHeader switch
+                    {
+                        string s when s.StartsWith("38-42-50-53") => "psd",
+                        string s when s.StartsWith("25-50-44-46") => "pdf",
+                        string s when s.StartsWith("49-49-2A-00") => "tif",
+                        string s when s.StartsWith("4D-4D-00-2A") => "tiff",
+                        string s when s.StartsWith("FF-D8-FF-E0") => "jpg",
+                        string s when s.StartsWith("89-50-4E-47") => "png",
+                        string s when s.StartsWith("50-4B-03-04") => DetermineOpenXmlType(fileBytes), // Could be DOCX/XLSX/PPTX
+                        string s when s.StartsWith("D0-CF-11-E0") => "xls", // OLE compound file
+                        string s when s.StartsWith("EF-BB-BF-4F") => "csv",
+                        string s when s.StartsWith("53-65-72-69") => "csv",
+                        _ => string.Empty
+                    };
+
+                    return output;
                 }
-                //string data_as_hex = BitConverter.ToString(data);
-                //reader.Close();
-
-                // substring to select first 11 characters from hexadecimal array    
-                string my = data.Substring(0, 11);
-                string output = null;
-                switch (my)
-                {
-                    case "38-42-50-53":
-                        output = "psd";
-                        break;
-
-                    case "25-50-44-46":
-                        output = "pdf";
-                        break;
-
-                    case "49-49-2A-00":
-                        output = "tif";
-                        break;
-
-                    case "4D-4D-00-2A":
-                        output = "tiff";
-                        break;
-
-                    case "FF-D8-FF-E0":
-                        output = "jpg";
-                        break;
-
-                    case "89-50-4E-47":
-                        output = "png";
-                        break;
-
-                    case "50-4B-03-04":
-                        output = "DOCX";
-                        break;
-
-                    case "EF-BB-BF-4F":
-                        output = " => CSV";
-                        break;
-                    case "53-65-72-69":
-                        output = " => CSV";
-                        break;
-                    default:
-                        output = string.Empty;
-                        break;
-
-                }
-                return output;
             }
             return "";
         }
+
+        // Optional helper for detecting DOCX/XLSX/PPTX
+        private static string DetermineOpenXmlType(byte[] fileBytes)
+        {
+            using var zip = new System.IO.Compression.ZipArchive(new MemoryStream(fileBytes), System.IO.Compression.ZipArchiveMode.Read);
+            if (zip.Entries.Any(e => e.FullName.StartsWith("word/")))
+                return "docx";
+            if (zip.Entries.Any(e => e.FullName.StartsWith("xl/")))
+                return "xlsx";
+            if (zip.Entries.Any(e => e.FullName.StartsWith("ppt/")))
+                return "pptx";
+            return "zip"; // generic fallback
+        }
+
 
 
     }

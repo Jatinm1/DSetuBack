@@ -20,12 +20,13 @@ namespace DealerSetu_Repositories.IRepositories
         Task<int> DemoTractorApproveRejectRepo(FilterModel filter);
         Task<List<DemoReqModel>> DemoActualClaimListRepo(FilterModel filter);
         //Task<int> AddDemoActualClaimRepo(DemoReqModel docModel);
-        Task<int> AddBasicDemoActualClaimRepo(DemoReqModel docModel);
-        Task<int> AddAllDemoActualClaimRepo(DemoReqModel docModel);
+        Task<int> AddBasicDemoActualClaimRepo(DemoReqModel docModel,bool BasicFlag);
+        Task<int> AddAllDemoActualClaimRepo(DemoReqModel docModel, bool BasicFlag);
         Task<List<DemoReqModel>> GetDemoTractorDoc(FilterModel filter);
         Task<string> UpdateDemoReqRepo(DemoReqUpdateModel request, string empNo);
         Task<int> DemoTractorApproveRejectClaimRepo(FilterModel filter);
         Task<int> AddActualDemoRemarkRepo(AddDemoTracRemarksModel request);
+        Task<int> UpdateDemoActualClaimRepo(DemoReqModel docModel, bool BasicFlag);
 
     }
 }

@@ -19,6 +19,8 @@ namespace DealerSetu_Data.Models.ViewModels
         public string SpecialVariant { get; set; }
         public int StatusId { get; set; }
         public string Status { get; set; }
+        public int ActualClaimStatusId { get; set; }
+        public string ActualClaimStatus { get; set; }
         public DateTime CreatedDate { get; set; }
         public string CreatedDateString { get; set; }
         public string CreatedBy { get; set; }

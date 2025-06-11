@@ -29,7 +29,7 @@ namespace DealerSetu.Controllers
             _jwtHelper = jwtHelper;
         }        
 
-        [HttpPost]
+        [HttpPost("GetTrackingDealers")]
         public async Task<ActionResult<IEnumerable<DealerModel>>> GetTrackingDealersPost([FromBody] GetTrackingDealersRequest request)
         {
             try
@@ -58,6 +58,34 @@ namespace DealerSetu.Controllers
                 _logger.LogError(ex, "Error occurred in GetTrackingDealersPost endpoint");
                 return StatusCode(500, "An internal server error occurred");
             }
-        }        
+        }
+
+
+        [HttpPost("GetPerformanceSheet")]
+        public async Task<IActionResult> GetPerformanceSheetAsync([FromBody] PerformanceSheetReqModel request)
+        {
+            try
+            {               
+
+                var result = await _performanceSheetService.GetPerformanceSheetServiceAsync(request);
+
+                if (result == null)
+                {
+                    return NotFound(new { message = "Performance sheet not found" });
+                }
+
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Invalid arguments provided for GetPerformanceSheet");
+                return BadRequest(new { message = "Invalid parameters provided" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while fetching performance sheet for DealerEmpId: {dealerEmpId}, Month: {month}, FYear: {fYear}", request.DealerEmpId, request.DealerEmpId, request.DealerEmpId);
+                return StatusCode(500, new { message = "An error occurred while processing your request" });
+            }
+        }
     }
 }

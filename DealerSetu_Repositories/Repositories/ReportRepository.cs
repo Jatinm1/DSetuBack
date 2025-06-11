@@ -87,38 +87,45 @@ namespace DealerSetu_Repositories.Repositories
         {
             if (filter == null) throw new ArgumentNullException(nameof(filter));
 
+            //_logger.LogInformation($"Executing RejectedRequestReportRepo with filter: FromDate={filter.From}, ToDate={filter.To}");
+
             try
             {
                 using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                // Create date range parameters
                 var dateParameters = CreateDateParameters(filter);
 
-                // Execute both stored procedures concurrently for better performance
-                var claimPlansTask = connection.QueryAsync<Rejectrequest>(
+                // Fetch rejected claim plans
+                var claimPlans = (await connection.QueryAsync<Rejectrequest>(
                     "sp_REPORT_RejectedClaimPlans",
                     dateParameters,
-                    commandType: CommandType.StoredProcedure);
+                    commandType: CommandType.StoredProcedure
+                )).ToList();
 
-                var demoTractorsTask = connection.QueryAsync<DemoTractorReject>(
+                // Fetch rejected demo tractors using the same parameters
+                var demoTractors = (await connection.QueryAsync<DemoTractorReject>(
                     "sp_REPORT_RejectedDemoTractors",
                     dateParameters,
-                    commandType: CommandType.StoredProcedure);
+                    commandType: CommandType.StoredProcedure
+                )).ToList();
 
-                await Task.WhenAll(claimPlansTask, demoTractorsTask);
-
-                return new DemoTractor
+                // Create summary model with counts
+                var countModel = new DemoTractor
                 {
-                    newdealercount = (await claimPlansTask).Count(),
-                    democount = (await demoTractorsTask).Count()
+                    newdealercount = claimPlans.Count,
+                    democount = demoTractors.Count
                 };
-            }
-            catch (SqlException ex)
-            {
-                throw new InvalidOperationException("Database error occurred while retrieving rejected request data.", ex);
+
+                //_logger.LogInformation($"RejectedRequestReportRepo completed. Found {claimPlans.Count} rejected claim plans and {demoTractors.Count} rejected demo tractors.");
+
+                return countModel;
             }
             catch (Exception ex)
             {
-                _utility.ExcepLog(ex);
-                throw new InvalidOperationException("Unexpected error occurred while processing rejected request report.", ex);
+                //_logger.LogError(ex, "Error in RejectedRequestReportRepo");
+                throw;
             }
         }
 

@@ -1,7 +1,6 @@
 ﻿using DealerSetu.Repository.Common;
 using DealerSetu_Data.Common;
 using DealerSetu_Data.Models.HelperModels;
-using DealerSetu_Data.Models;
 using DealerSetu_Data.Models.RequestModels;
 using DealerSetu_Services.IServices;
 using Microsoft.AspNetCore.Mvc;
@@ -14,21 +13,17 @@ namespace DealerSetu.Controllers
     {
         private readonly IRequestService _requestService;
         private readonly JwtHelper _jwtHelper;
-        private readonly ValidationHelper _validationHelper;
         private readonly Utility _utility;
-        private readonly FileLoggerService _logger;
 
-        public RequestController(IRequestService requestService, JwtHelper jwtHelper, ValidationHelper validationHelper, Utility utility)
+        public RequestController(IRequestService requestService, JwtHelper jwtHelper, Utility utility)
         {
             _requestService = requestService;
             _jwtHelper = jwtHelper;
             _utility = utility;
-            _validationHelper = validationHelper;
-            _logger = new FileLoggerService();
         }
 
         /// <summary>
-        /// Retrieves the filtered request types.
+        /// Retrieves available request types for filtering
         /// </summary>
         [HttpGet("RequestTypeFilter")]
         public async Task<IActionResult> RequestTypeFilter()
@@ -36,86 +31,43 @@ namespace DealerSetu.Controllers
             try
             {
                 var response = await _requestService.RequestTypeFilterService();
-
-                if (response.isError == true)
-                {
-                    return StatusCode(500, response);
-                }
-
-                return Ok(response);
+                return (bool)response.isError ? StatusCode(500, response) : Ok(response);
             }
             catch (Exception ex)
             {
-                _logger.LogError("RequestTypeFilter", "Error retrieving request type filters", ex);
-                return StatusCode(500, new ServiceResponse
-                {
-                    isError = true,
-                    Error = ex.Message,
-                    Message = "An unexpected error occurred",
-                    Status = "Error",
-                    Code = "500"
-                });
+                return StatusCode(500, CreateErrorResponse(ex.Message));
             }
         }
 
-
+        /// <summary>
+        /// Retrieves available HP categories for filtering
+        /// </summary>
         [HttpGet("HPCategoryFilter")]
         public async Task<IActionResult> HPCategoryFilter()
         {
             try
             {
                 var response = await _requestService.HPCategoryService();
-
-                if (response.isError == true)
-                {
-                    return StatusCode(500, response);
-                }
-
-                return Ok(response);
+                return (bool)response.isError ? StatusCode(500, response) : Ok(response);
             }
             catch (Exception ex)
             {
-                _logger.LogError("HPCategoryFilter", "Error retrieving HP category filters", ex);
-                return StatusCode(500, new ServiceResponse
-                {
-                    isError = true,
-                    Error = ex.Message,
-                    Message = "An unexpected error occurred",
-                    Status = "Error",
-                    Code = "500"
-                });
+                return StatusCode(500, CreateErrorResponse(ex.Message));
             }
         }
 
-
+        /// <summary>
+        /// Retrieves paginated list of requests based on filter criteria
+        /// </summary>
         [HttpPost("GetRequestList")]
         public async Task<IActionResult> GetRequestList([FromBody] RequestReq request)
         {
             try
             {
                 if (request == null)
-                {
-                    return BadRequest(_utility.CreateErrorResponse(
-                        "Invalid payload", "Request body cannot be null.", "400"));
-                }
+                    return BadRequest(_utility.CreateErrorResponse("Invalid payload", "Request body cannot be null.", "400"));
 
-                // Validate pagination
-                var paginationValidation = _validationHelper.ValidatePagination(request.PageIndex, request.PageSize);
-                if (paginationValidation != null)
-                {
-                    return BadRequest(paginationValidation);
-                }
-
-                // Validate date range
-                var dateRangeValidation = _validationHelper.ValidateDateRange(request.From, request.To);
-                if (dateRangeValidation != null)
-                {
-                    return BadRequest(dateRangeValidation);
-                }
-
-                var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
-                var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
-
+                var (empNo, roleId) = GetUserClaims();
                 var filter = new FilterModel
                 {
                     EmpNo = empNo,
@@ -131,13 +83,12 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError("GetRequestList", "Error retrieving request list", ex);
-                return StatusCode(500, "An error occurred while processing your request.");
+                return StatusCode(500, CreateErrorResponse(ex.Message));
             }
         }
 
         /// <summary>
-        /// Submits a new request.
+        /// Submits a new request with validation
         /// </summary>
         [HttpPost("SubmitRequest")]
         public async Task<IActionResult> SubmitRequest([FromBody] RequestSubmissionModel request)
@@ -145,44 +96,44 @@ namespace DealerSetu.Controllers
             try
             {
                 if (request == null)
-                {
-                    return BadRequest(_utility.CreateErrorResponse(
-                        "Invalid payload", "Request body cannot be null.", "400"));
-                }
+                    return BadRequest(_utility.CreateErrorResponse("Invalid payload", "Request body cannot be null.", "400"));
+
                 if (request.RequestTypeId == "1" && string.IsNullOrWhiteSpace(request.HpCategory))
-                {
-                    return BadRequest(_utility.CreateErrorResponse(
-                        "Invalid payload", "HP Category is Required for Demo Tractor Request", "400"));
-                }
+                    return BadRequest(_utility.CreateErrorResponse("Invalid payload", "HP Category is Required for Demo Tractor Request", "400"));
 
-
-                // Retrieve user details from JWT claims
-                var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
-                var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
-
+                var (empNo, roleId) = GetUserClaims();
                 if (string.IsNullOrEmpty(empNo) || string.IsNullOrEmpty(roleId))
-                {
                     return Unauthorized("User not authenticated properly");
-                }
 
-                //if (roleId != "1")
-                //{
-                //    return BadRequest("Invalid Role");
-                //}
+                if (roleId != "1")
+                    return BadRequest("Invalid Role");
 
-                var result = await _requestService.SubmitRequestService(
-                    request.RequestTypeId,
-                    request.Message,
-                    request.HpCategory,
-                    empNo);
-
+                var result = await _requestService.SubmitRequestService(request, empNo, roleId);
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError("SubmitRequest", "Error submitting request", ex);
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                return StatusCode(500, CreateErrorResponse(ex.Message));
             }
+        }
+
+        private (string empNo, string roleId) GetUserClaims()
+        {
+            var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
+            var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
+            return (empNo, roleId);
+        }
+
+        private ServiceResponse CreateErrorResponse(string message)
+        {
+            return new ServiceResponse
+            {
+                isError = true,
+                Error = message,
+                Message = "An unexpected error occurred",
+                Status = "Error",
+                Code = "500"
+            };
         }
     }
 }

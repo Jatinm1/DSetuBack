@@ -1,11 +1,11 @@
 ﻿using Dapper;
+using DealerSetu_Data.Models.HelperModels;
+using DealerSetu_Data.Models.RequestModels;
+using DealerSetu_Data.Models.ViewModels;
+using DealerSetu_Repositories.IRepositories;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using System.Data;
-using DealerSetu_Repositories.IRepositories;
-using DealerSetu_Data.Models.ViewModels;
-using DealerSetu_Data.Models.RequestModels;
-using DealerSetu_Data.Models.HelperModels;
 
 namespace DealerSetu_Repositories.Repositories
 {
@@ -25,11 +25,9 @@ namespace DealerSetu_Repositories.Repositories
         /// <summary>
         /// Retrieves all available request types for filtering
         /// </summary>
-        /// <returns>List of request type filter models</returns>
         public async Task<List<RequestTypeFilterModel>> RequestTypeFilterRepo()
         {
             using var connection = new SqlConnection(_connectionString);
-
             var requestTypes = await connection.QueryAsync<RequestTypeFilterModel>(
                 "sp_REQUEST_GetRequestTypes",
                 commandType: CommandType.StoredProcedure);
@@ -40,11 +38,9 @@ namespace DealerSetu_Repositories.Repositories
         /// <summary>
         /// Retrieves all available HP categories for filtering
         /// </summary>
-        /// <returns>List of HP category filter models</returns>
         public async Task<List<HPCategoryFilterModel>> HPCategoryFilterRepo()
         {
             using var connection = new SqlConnection(_connectionString);
-
             var hpCategories = await connection.QueryAsync<HPCategoryFilterModel>(
                 "sp_REQUEST_GetHPCategories",
                 commandType: CommandType.StoredProcedure);
@@ -53,32 +49,25 @@ namespace DealerSetu_Repositories.Repositories
         }
 
         /// <summary>
-        /// Submits a new request to the system
+        /// Submits a new request to the database
         /// </summary>
-        /// <param name="requestTypeId">ID of the request type</param>
-        /// <param name="message">Request message content</param>
-        /// <param name="hpCategory">HP category ID (optional)</param>
-        /// <param name="empNo">Employee number</param>
-        /// <returns>Request submission result with generated details</returns>
-        public async Task<RequestSubmissionResult> SubmitRequestAsync(string requestTypeId, string message, string hpCategory, string empNo)
+        public async Task<RequestSubmissionResult> SubmitRequestAsync(RequestSubmissionModel request, string empNo, string roleId)
         {
-            if (string.IsNullOrWhiteSpace(requestTypeId) || !int.TryParse(requestTypeId, out var parsedRequestTypeId))
-                throw new ArgumentException("Invalid request type ID", nameof(requestTypeId));
+            if (!int.TryParse(request.RequestTypeId, out var parsedRequestTypeId))
+                throw new ArgumentException("Invalid request type ID", nameof(request.RequestTypeId));
 
-            if (string.IsNullOrWhiteSpace(message))
-                throw new ArgumentException("Message cannot be empty", nameof(message));
-
-            if (string.IsNullOrWhiteSpace(empNo))
-                throw new ArgumentException("Employee number cannot be empty", nameof(empNo));
+            if (!int.TryParse(roleId, out var parsedRoleId))
+                throw new ArgumentException("Invalid RoleId", nameof(roleId));
 
             using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync();
 
             var parameters = new DynamicParameters();
             parameters.Add("@RequestTypeId", parsedRequestTypeId, DbType.Int32);
-            parameters.Add("@Message", message, DbType.String);
-            parameters.Add("@HpCategoryId", string.IsNullOrEmpty(hpCategory) ? (int?)null : int.Parse(hpCategory), DbType.Int32);
+            parameters.Add("@Message", request.Message, DbType.String);
+            parameters.Add("@HpCategoryId", string.IsNullOrEmpty(request.HpCategory) ? null : int.Parse(request.HpCategory), DbType.Int32);
             parameters.Add("@EmpNo", empNo, DbType.String);
+            parameters.Add("@RoleId", parsedRoleId, DbType.Int32);
 
             // Output parameters
             parameters.Add("@RequestId", dbType: DbType.Int32, direction: ParameterDirection.Output);
@@ -90,9 +79,13 @@ namespace DealerSetu_Repositories.Repositories
                 parameters,
                 commandType: CommandType.StoredProcedure);
 
+            var requestId = parameters.Get<int>("@RequestId");
+            if (requestId == -2)
+                throw new ArgumentException("Unauthorized Role for Request Submission");
+
             return new RequestSubmissionResult
             {
-                RequestId = parameters.Get<int>("@RequestId"),
+                RequestId = requestId,
                 RequestNo = parameters.Get<string>("@RequestNo"),
                 RequestTypeName = parameters.Get<string>("@RequestTypeName")
             };
@@ -101,28 +94,18 @@ namespace DealerSetu_Repositories.Repositories
         /// <summary>
         /// Retrieves paginated list of requests based on filter criteria
         /// </summary>
-        /// <param name="filter">Filter criteria for requests</param>
-        /// <param name="pageIndex">Page index for pagination (0-based)</param>
-        /// <param name="pageSize">Number of items per page</param>
-        /// <returns>Tuple containing list of requests and total count</returns>
         public async Task<(List<RequestModel> requests, int TotalCount)> RequestListRepo(FilterModel filter, int pageIndex, int pageSize)
         {
             if (filter == null)
                 throw new ArgumentNullException(nameof(filter));
-
-            if (pageIndex < 0)
-                throw new ArgumentException("Page index must be non-negative", nameof(pageIndex));
-
-            if (pageSize <= 0)
-                throw new ArgumentException("Page size must be positive", nameof(pageSize));
 
             using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync();
 
             var parameters = new DynamicParameters();
             parameters.Add("@RequestTypeId", string.IsNullOrEmpty(filter.RequestTypeId) ? null : int.Parse(filter.RequestTypeId));
-            parameters.Add("@FromDate", (DateTime?)null);
-            parameters.Add("@ToDate", (DateTime?)null);
+            parameters.Add("@FromDate", filter.From);
+            parameters.Add("@ToDate", filter.To);
             parameters.Add("@RequestNo", string.IsNullOrEmpty(filter.RequestNo) ? null : filter.RequestNo);
             parameters.Add("@EmpNo", filter.EmpNo);
             parameters.Add("@RoleId", filter.RoleId);

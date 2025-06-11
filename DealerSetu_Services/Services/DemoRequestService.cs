@@ -6,6 +6,7 @@ using DealerSetu_Services.IServices;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -260,7 +261,7 @@ namespace DealerSetu_Services.Services
             }
         }
 
-        public async Task<ServiceResponse> AddDemoActualClaimService(DemoReqModel request)
+        public async Task<ServiceResponse> AddDemoActualClaimService(DemoReqModel request,bool BasicFlag)
         {
 
             try
@@ -279,11 +280,11 @@ namespace DealerSetu_Services.Services
                 int claimId;
                 if (!string.IsNullOrWhiteSpace(request.ChassisNo))
                 {
-                    claimId = await _demoRequestRepository.AddBasicDemoActualClaimRepo(request);
+                    claimId = await _demoRequestRepository.AddBasicDemoActualClaimRepo(request,BasicFlag);
                 }
                 else
                 {
-                    claimId = await _demoRequestRepository.AddAllDemoActualClaimRepo(request);
+                    claimId = await _demoRequestRepository.AddAllDemoActualClaimRepo(request,BasicFlag);
                 }
 
                 return CreateSuccessResponse(
@@ -299,6 +300,77 @@ namespace DealerSetu_Services.Services
             {
                 return CreateErrorResponse(ex, "Error submitting claim");
             }
+        }
+
+        public async Task<ServiceResponse> UpdateDemoActualClaimService(DemoReqModel request, bool BasicFlag)
+        {
+            try
+            {
+                if (request == null)
+                {
+                    throw new ArgumentNullException(nameof(request));
+                }
+
+                // Validate that RequestId is provided for updates
+                if (request.DemoRequestId == null || request.DemoRequestId == 0)
+                {
+                    return CreateErrorResponse(new ArgumentException("RequestId is required for update operations"),
+                        "RequestId is required for update operations", "400");
+                }
+
+                // For updates, we don't need to validate all fields as they might be partial updates
+                // Only validate the fields that are actually being updated
+                var validationResult = ValidateUpdateClaimFields(request);
+                if (validationResult != null)
+                {
+                    return validationResult;
+                }
+
+
+
+                int result = await _demoRequestRepository.UpdateDemoActualClaimRepo(request,BasicFlag);
+
+                if (result > 0)
+                {
+                    return CreateSuccessResponse(
+                        result,
+                        1,
+                        "Claim updated successfully");
+                }
+                else
+                {
+                    return CreateErrorResponse(new Exception("Update failed"),
+                        "Failed to update claim", "500");
+                }
+            }
+            catch (ArgumentException ex)
+            {
+                return CreateErrorResponse(ex, "Invalid parameters for updating claim", "400");
+            }
+            catch (Exception ex)
+            {
+                return CreateErrorResponse(ex, "Error updating claim");
+            }
+        }
+
+        // Validation method for update operations (less strict than add operations)
+        private ServiceResponse ValidateUpdateClaimFields(DemoReqModel request)
+        {
+            // Add any specific validation logic for updates
+            // This would be more lenient than the add validation since fields are optional
+
+            // Example: If DateOfBilling is provided, validate its format
+            if (!string.IsNullOrEmpty(request.DateOfBilling))
+            {
+                if (!DateTime.TryParseExact(request.DateOfBilling, "dd/MM/yyyy",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
+                {
+                    return CreateErrorResponse(new ArgumentException("Invalid date format"),
+                        "DateOfBilling must be in dd/MM/yyyy format", "400");
+                }
+            }
+
+            return null; // No validation errors
         }
 
         public async Task<ServiceResponse> GetDemoTractorDocService(FilterModel filter)

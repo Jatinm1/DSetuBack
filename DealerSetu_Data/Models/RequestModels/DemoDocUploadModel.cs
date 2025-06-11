@@ -29,6 +29,7 @@ namespace DealerSetu_Data.Models.RequestModels
         public IFormFile? LogDemonsFile { get; set; }
         public IFormFile? Affidavitfile { get; set; }
         public IFormFile? SaleDeedfile { get; set; }
+        public bool BasicFlag { get; set; }
         //public string FileSaleExt { get; set; }
         //public string FileTractorExt { get; set; }
         //public string FilePictureExt { get; set; }

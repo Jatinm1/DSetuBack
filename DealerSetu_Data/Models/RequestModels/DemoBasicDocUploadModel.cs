@@ -22,6 +22,7 @@ namespace DealerSetu_Data.Models.RequestModels
         public IFormFile? InvoiceFile { get; set; }
         public IFormFile? RCFile { get; set; }
         public IFormFile? InsuranceFile { get; set; }
+        public bool BasicFlag { get; set; }
         //public IFormFile FileSale { get; set; }
         //public IFormFile FileTractor { get; set; }
         //public IFormFile FilePicture { get; set; }
