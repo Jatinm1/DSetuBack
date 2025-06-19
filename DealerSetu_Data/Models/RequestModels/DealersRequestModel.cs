@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace DealerSetu_Data.Models.RequestModels
 {
-    public class GetTrackingDealersRequest
+    public class DealersRequestModel
     {
         public string? Keyword { get; set; }
 
@@ -16,5 +16,9 @@ namespace DealerSetu_Data.Models.RequestModels
 
         [Required]
         public string FYear { get; set; } = string.Empty;
+        [Required]
+        public int PageIndex { get; set; }
+        [Required]
+        public int PageSize { get; set; }
     }
 }

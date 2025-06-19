@@ -67,7 +67,7 @@ namespace DealerSetu_Data.Models.ViewModels
         public string ActionRequired { get; set; }
         public string Remarks { get; set; }
 
-        public List<FieldActivity> fieldActivities { get; set; }
+        public List<FieldActivity> FieldActivities { get; set; }
     }
     public class FieldActivity
     {

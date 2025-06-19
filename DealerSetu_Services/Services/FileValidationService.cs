@@ -1,17 +1,18 @@
-﻿using DealerSetu_Services.IServices;
-using ExcelDataReader;
-using Microsoft.AspNetCore.Http;
-using System.Diagnostics;
-using System.Text.RegularExpressions;
-using System.Data;
-using System.Web;
-using DealerSetu.Repository.Common;
-using DealerSetu_Data.Models.HelperModels;
-using Cloudmersive.APIClient.NET.VirusScan.Api;
+﻿using Cloudmersive.APIClient.NET.VirusScan.Api;
 using Cloudmersive.APIClient.NET.VirusScan.Client;
 using Cloudmersive.APIClient.NET.VirusScan.Model;
+using DealerSetu.Repository.Common;
+using DealerSetu_Data.Models.HelperModels;
+using DealerSetu_Services.IServices;
+using ExcelDataReader;
+using Microsoft.AspNetCore.Http;
+using System.Data;
+using System.Diagnostics;
+using System.Net;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Web;
 
 namespace DealerSetu_Services.Services
 {
@@ -40,8 +41,8 @@ namespace DealerSetu_Services.Services
         // Precompiled regex patterns for performance
         private static readonly Regex EmailRegex = new Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.Compiled);
         private static readonly Regex ScriptTagRegex = new Regex(@"<script[^>]*>.*?</script>", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-        private static readonly Regex HarmfulCharsRegex = new Regex(@"[\\/:*?""<>|]", RegexOptions.Compiled);
-        private static readonly Regex AlphanumericWithSpaceRegex = new Regex(@"^[a-zA-Z0-9\s]+$", RegexOptions.Compiled);
+        private static readonly Regex HarmfulCharsRegex = new Regex(@"[\\:*?""<>|]", RegexOptions.Compiled);
+        private static readonly Regex AlphanumericWithSpaceRegex = new Regex(@"^[a-zA-Z0-9\s()./&]+$", RegexOptions.Compiled);
         // Suspicious patterns for security checks
         //private static readonly string[] SqlPatterns = {
         //    "union select", "union all", "union distinct",
@@ -731,10 +732,9 @@ namespace DealerSetu_Services.Services
         {
             if (string.IsNullOrEmpty(input))
                 return input;
-
-            var sanitizedInput = HttpUtility.HtmlEncode(input);
-            sanitizedInput = HarmfulCharsRegex.Replace(sanitizedInput, "");
-            sanitizedInput = ScriptTagRegex.Replace(sanitizedInput, "");
+            
+            var sanitizedInput = HarmfulCharsRegex.Replace(input, "");
+            sanitizedInput = ScriptTagRegex.Replace(input, "");
 
             return sanitizedInput.Trim();
         }
@@ -780,9 +780,10 @@ namespace DealerSetu_Services.Services
         {
             if (string.IsNullOrWhiteSpace(input))
                 return false;
+            string decoded = WebUtility.HtmlDecode(input); // Becomes: "M/S KISAN TRACTORS & MOTORS"
 
             // Regex: Allows letters (a-z, A-Z), numbers (0-9), and spaces
-            return Regex.IsMatch(input, @"^[a-zA-Z0-9\s]+$");
+            return Regex.IsMatch(decoded, @"^[a-zA-Z0-9\s()./&-]+$");
         }
 
         //public bool IsValidEmail(string email)
