@@ -171,31 +171,32 @@ namespace DealerSetu_Repositories.Repositories
                 using (var connection = new SqlConnection(_connectionString))
                 {
                     await connection.OpenAsync();
-
                     var parameters = new DynamicParameters();
                     parameters.Add("@DealerEmpId", request.DealerEmpId, DbType.Int32);
                     parameters.Add("@Month", request.Month, DbType.Int32);
                     parameters.Add("@FYear", request.FYear, DbType.String);
 
-                    var businessPerformanceSheets = (await connection.QueryAsync<BusinessPerformanceSheet>(
+                    using (var multi = await connection.QueryMultipleAsync(
                         "sp_PERF_GetBusinessPlan",
                         parameters,
-                        commandType: CommandType.StoredProcedure
-                    )).ToList();
-
-                    var businessPlan = new BusinessPerformancePlan
+                        commandType: CommandType.StoredProcedure))
                     {
-                        DealerEmpId = request.DealerEmpId,
-                        FYear = request.FYear,
-                        businessPerformanceSheets = businessPerformanceSheets
-                    };
+                        var businessPerformanceSheets = (await multi.ReadAsync<BusinessPerformanceSheet>()).ToList();
+                        var createdBy = await multi.ReadFirstOrDefaultAsync<string>();
 
-                    return businessPlan;
+                        var businessPlan = new BusinessPerformancePlan
+                        {
+                            DealerEmpId = request.DealerEmpId,
+                            FYear = request.FYear,
+                            CreatedBy = createdBy,
+                            businessPerformanceSheets = businessPerformanceSheets
+                        };
+                        return businessPlan;
+                    }
                 }
             }
             catch (Exception ex)
             {
-                // Log exception here if needed
                 throw;
             }
         }
