@@ -15,7 +15,7 @@ namespace DealerSetu_Services.IServices
         Task<ServiceResponse> GetPendingDealersServiceAsync(DealersRequestModel request, string empNo);
         Task<ServiceResponse> GetDealerListServiceAsync(string empNo);
         Task<ServiceResponse> GetPerformanceSheetServiceAsync(PerformanceSheetReqModel request);
-        Task<ServiceResponse> GetDealerBusinessPlanServiceAsync(PerformanceSheetReqModel request);
+        Task<ServiceResponse> GetDealerBusinessPlanServiceAsync(BusinessPlanReqModel request);
         Task<ServiceResponse> GetDealerDetailsServiceAsync(PerformanceSheetReqModel request);
         Task<ServiceResponse> GetActionPlanDetailServiceAsync(ActionPlanDetailReqModel request);
         Task<ServiceResponse> SubmitPerformanceSheetServiceAsync(PerformanceSheetUpdateModel request, string empNo);

@@ -11,47 +11,48 @@ namespace DealerSetu.Controllers
     public class PerformanceSheetController : ControllerBase
     {
         private readonly IPerformanceSheetService _performanceSheetService;
-        private readonly ILogger<PerformanceSheetController> _logger;
-        private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly JwtHelper _jwtHelper;
 
-
-        public PerformanceSheetController(
-            IPerformanceSheetService performanceSheetService,
-            ILogger<PerformanceSheetController> logger,
-            IHttpContextAccessor httpContextAccessor,
-            JwtHelper jwtHelper
-            )
+        public PerformanceSheetController(IPerformanceSheetService performanceSheetService, JwtHelper jwtHelper)
         {
             _performanceSheetService = performanceSheetService;
-            _logger = logger;
-            _httpContextAccessor = httpContextAccessor;
             _jwtHelper = jwtHelper;
-        }        
+        }
+
+        // Common authentication helper
+        private string GetAuthenticatedEmpNo()
+        {
+            var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
+            return string.IsNullOrEmpty(empNo) ? throw new UnauthorizedAccessException("User not authenticated") : empNo;
+        }
+
+        // Common validation helper
+        private void ValidateModel()
+        {
+            if (!ModelState.IsValid)
+                throw new ArgumentException("Invalid model state");
+        }
 
         [HttpPost("GetTrackingDealers")]
         public async Task<ActionResult<IEnumerable<DealerModel>>> GetTrackingDealersPost([FromBody] DealersRequestModel request)
         {
             try
             {
-                if (!ModelState.IsValid)
-                {
-                    return BadRequest(ModelState);
-                }
-
-                var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
-                if (string.IsNullOrEmpty(empNo))
-                {
-                    return Unauthorized("User not authenticated");
-                }
-
-                var dealers = await _performanceSheetService.GetTrackingDealersServiceAsync(request,empNo);
-
+                ValidateModel();
+                var empNo = GetAuthenticatedEmpNo();
+                var dealers = await _performanceSheetService.GetTrackingDealersServiceAsync(request, empNo);
                 return Ok(dealers);
             }
-            catch (Exception ex)
+            catch (UnauthorizedAccessException)
             {
-                _logger.LogError(ex, "Error occurred in GetTrackingDealersPost endpoint");
+                return Unauthorized("User not authenticated");
+            }
+            catch (ArgumentException)
+            {
+                return BadRequest(ModelState);
+            }
+            catch
+            {
                 return StatusCode(500, "An internal server error occurred");
             }
         }
@@ -61,24 +62,21 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                if (!ModelState.IsValid)
-                {
-                    return BadRequest(ModelState);
-                }
-
-                var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
-                if (string.IsNullOrEmpty(empNo))
-                {
-                    return Unauthorized("User not authenticated");
-                }
-
+                ValidateModel();
+                var empNo = GetAuthenticatedEmpNo();
                 var dealers = await _performanceSheetService.GetPendingDealersServiceAsync(request, empNo);
-
                 return Ok(dealers);
             }
-            catch (Exception ex)
+            catch (UnauthorizedAccessException)
             {
-                _logger.LogError(ex, "Error occurred in GetPendingDealers endpoint");
+                return Unauthorized("User not authenticated");
+            }
+            catch (ArgumentException)
+            {
+                return BadRequest(ModelState);
+            }
+            catch
+            {
                 return StatusCode(500, "An internal server error occurred");
             }
         }
@@ -88,24 +86,16 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                if (!ModelState.IsValid)
-                {
-                    return BadRequest(ModelState);
-                }
-
-                var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
-                if (string.IsNullOrEmpty(empNo))
-                {
-                    return Unauthorized("User not authenticated");
-                }
-
+                var empNo = GetAuthenticatedEmpNo();
                 var dealers = await _performanceSheetService.GetDealerListServiceAsync(empNo);
-
                 return Ok(dealers);
             }
-            catch (Exception ex)
+            catch (UnauthorizedAccessException)
             {
-                _logger.LogError(ex, "Error occurred in GetDealerList endpoint");
+                return Unauthorized("User not authenticated");
+            }
+            catch
+            {
                 return StatusCode(500, "An internal server error occurred");
             }
         }
@@ -114,50 +104,34 @@ namespace DealerSetu.Controllers
         public async Task<IActionResult> GetPerformanceSheetAsync([FromBody] PerformanceSheetReqModel request)
         {
             try
-            {               
-                var result = await _performanceSheetService.GetPerformanceSheetServiceAsync(request);
-
-                if (result == null)
-                {
-                    return NotFound(new { message = "Performance sheet not found" });
-                }
-
-                return Ok(result);
-            }
-            catch (ArgumentException ex)
             {
-                _logger.LogWarning(ex, "Invalid arguments provided for GetPerformanceSheet");
+                var result = await _performanceSheetService.GetPerformanceSheetServiceAsync(request);
+                return result == null ? NotFound(new { message = "Performance sheet not found" }) : Ok(result);
+            }
+            catch (ArgumentException)
+            {
                 return BadRequest(new { message = "Invalid parameters provided" });
             }
-            catch (Exception ex)
+            catch
             {
-                _logger.LogError(ex, "Error occurred while fetching performance sheet for DealerEmpId: {dealerEmpId}, Month: {month}, FYear: {fYear}", request.DealerEmpId, request.DealerEmpId, request.DealerEmpId);
                 return StatusCode(500, new { message = "An error occurred while processing your request" });
             }
         }
 
         [HttpPost("GetDealerBusinessPlan")]
-        public async Task<IActionResult> GetDealerBusinessPlan([FromBody] PerformanceSheetReqModel request)
+        public async Task<IActionResult> GetDealerBusinessPlan([FromBody] BusinessPlanReqModel request)
         {
             try
             {
                 var result = await _performanceSheetService.GetDealerBusinessPlanServiceAsync(request);
-
-                if (result == null)
-                {
-                    return NotFound(new { message = "Business Plan not found" });
-                }
-
-                return Ok(result);
+                return result == null ? NotFound(new { message = "Business Plan not found" }) : Ok(result);
             }
-            catch (ArgumentException ex)
+            catch (ArgumentException)
             {
-                _logger.LogWarning(ex, "Invalid arguments provided for GetDealerBusinessPlan");
                 return BadRequest(new { message = "Invalid parameters provided" });
             }
-            catch (Exception ex)
+            catch
             {
-                _logger.LogError(ex, "Error occurred while fetching Business Plan for DealerEmpId: {dealerEmpId}, Month: {month}, FYear: {fYear}", request.DealerEmpId, request.DealerEmpId, request.DealerEmpId);
                 return StatusCode(500, new { message = "An error occurred while processing your request" });
             }
         }
@@ -167,28 +141,29 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
-
-                request.CreatedBy = empNo;
+                request.CreatedBy = GetAuthenticatedEmpNo();
                 var result = await _performanceSheetService.SubmitDealerBusinessPlanServiceAsync(request);
-
-                if (result == null)
-                {
-                    return NotFound(new { message = "Some Error has occured" });
-                }
-
-                return Ok(result);
+                return result == null ? NotFound(new { message = "Some Error has occured" }) : Ok(result);
             }
-            catch (ArgumentException ex)
+            catch (UnauthorizedAccessException)
             {
-                _logger.LogWarning(ex, "Invalid arguments provided for AddDealerBusinessPlan");
+                return Unauthorized("User not authenticated");
+            }
+            catch (ArgumentException)
+            {
                 return BadRequest(new { message = "Invalid parameters provided" });
             }
-            catch (Exception ex)
+            catch
             {
-                _logger.LogError(ex, "Error occurred while submitting Business Plan for DealerEmpId: {dealerEmpId}, FYear: {fYear}", request.DealerEmpId,request.FYear);
                 return StatusCode(500, new { message = "An error occurred while processing your request" });
             }
+        }
+
+        // Validation helper for dealer details endpoints
+        private static void ValidateDealerRequest(PerformanceSheetReqModel request)
+        {
+            if (string.IsNullOrWhiteSpace(request.FYear))
+                throw new ArgumentException("DealerEmpId, Month, and FYear are required parameters.");
         }
 
         [HttpPost("GetDealerDetails")]
@@ -196,28 +171,16 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(request.FYear) || request.DealerEmpId == null || request.Month == null)
-                {
-                    return BadRequest("DealerEmpId, Month, and FYear are required parameters.");
-                }
-
+                ValidateDealerRequest(request);
                 var result = await _performanceSheetService.GetDealerDetailsServiceAsync(request);
-
-                if (result == null)
-                {
-                    return NotFound("Dealer details not found.");
-                }
-
-                return Ok(result);
+                return result == null ? NotFound("Dealer details not found.") : Ok(result);
             }
             catch (ArgumentException ex)
             {
-                //_logger.LogWarning(ex, "Invalid parameters provided for GetDealerDetails");
                 return BadRequest(ex.Message);
             }
-            catch (Exception ex)
+            catch
             {
-                //_logger.LogError(ex, "Error occurred while getting dealer details for DealerEmpId: {DealerEmpId}", dealerEmpId);
                 return StatusCode(500, "An error occurred while processing your request.");
             }
         }
@@ -227,28 +190,18 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(request.FYear) || request.DealerEmpId == null || request.Month == null)
-                {
-                    return BadRequest("DealerEmpId, Month, and FYear are required parameters.");
-                }
+                if (string.IsNullOrWhiteSpace(request.FYear))
+                    throw new ArgumentException("DealerEmpId, Month, and FYear are required parameters.");
 
                 var result = await _performanceSheetService.GetActionPlanDetailServiceAsync(request);
-
-                if (result == null)
-                {
-                    return NotFound("Dealer details not found.");
-                }
-
-                return Ok(result);
+                return result == null ? NotFound("Action plan details not found.") : Ok(result);
             }
             catch (ArgumentException ex)
             {
-                //_logger.LogWarning(ex, "Invalid parameters provided for GetDealerDetails");
                 return BadRequest(ex.Message);
             }
-            catch (Exception ex)
+            catch
             {
-                //_logger.LogError(ex, "Error occurred while getting dealer details for DealerEmpId: {DealerEmpId}", dealerEmpId);
                 return StatusCode(500, "An error occurred while processing your request.");
             }
         }
@@ -258,23 +211,19 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
-
-                request.CreatedBy = empNo;
+                request.CreatedBy = GetAuthenticatedEmpNo();
                 var result = await _performanceSheetService.SubmitActionPlanServiceAsync(request);
-
-                if (result == null)
-                {
-                    return NotFound("Action Plan not submitted.");
-                }
-
-                return Ok(result);
+                return result == null ? NotFound("Action Plan not submitted.") : Ok(result);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized("User not authenticated");
             }
             catch (ArgumentException ex)
             {
                 return BadRequest(ex.Message);
             }
-            catch (Exception ex)
+            catch
             {
                 return StatusCode(500, "An error occurred while processing your request.");
             }
@@ -285,15 +234,15 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
-
-                var result = await _performanceSheetService.SubmitPerformanceSheetServiceAsync(request,empNo);
-                if (result == null)
-                {
-                    return StatusCode(500, new { message = "An error occurred while updating Performance Sheet" });
-                }
-
-                return Ok(result);
+                var empNo = GetAuthenticatedEmpNo();
+                var result = await _performanceSheetService.SubmitPerformanceSheetServiceAsync(request, empNo);
+                return result == null
+                    ? StatusCode(500, new { message = "An error occurred while updating Performance Sheet" })
+                    : Ok(result);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized("User not authenticated");
             }
             catch (Exception ex)
             {

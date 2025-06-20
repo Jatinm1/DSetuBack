@@ -6,11 +6,9 @@ using System.Threading.Tasks;
 
 namespace DealerSetu_Data.Models.RequestModels
 {
-    public class ActionPlanDetailReqModel
+    public class BusinessPlanReqModel
     {
-        public int ActionPlanId { get; set; }
         public int DealerEmpId { get; set; }
-        public int Month { get; set; }
-        public string FYear { get; set; }
+        public required string FYear { get; set; }
     }
 }

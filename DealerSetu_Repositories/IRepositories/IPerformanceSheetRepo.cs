@@ -14,7 +14,7 @@ namespace DealerSetu_Repositories.IRepositories
         Task<(List<DealerModel>, int TotalCount)> GetPendingDealersRepoAsync(DealersRequestModel request, string empNo);
         Task<(List<DealerListModel>, int TotalCount)> GetDealerListRepoAsync(string empNo);
         Task<PerformanceSheetModel> GetPerformanceSheetRepoAsync(PerformanceSheetReqModel request);
-        Task<BusinessPerformancePlan> GetDealerBusinessPlanRepoAsync(PerformanceSheetReqModel request);
+        Task<BusinessPerformancePlan> GetDealerBusinessPlanRepoAsync(BusinessPlanReqModel request);
         Task<BusinessPlanResult> SubmitDealerBusinessPlanRepoAsync(BusinessPerformancePlan planModel);
         Task<DealerModel> GetDealerDetailsRepoAsync(PerformanceSheetReqModel request);
         //Task<ActionPlanModel> GetActionPlanDetailRepoAsync(ActionPlanDetailReqModel request);
