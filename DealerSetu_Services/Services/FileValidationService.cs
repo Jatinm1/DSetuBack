@@ -47,8 +47,7 @@ namespace DealerSetu_Services.Services
         //private static readonly string[] SqlPatterns = {
         //    "union select", "union all", "union distinct",
         //    "order by", "group by", "having",
-        //    "--", ";--", ";", "/*", "*/", "@@",
-        //    "char(", "convert(", "cast(",
+        //    "@@","char(", "convert(", "cast(",
         //    "declare", "exec(", "execute(",
         //    "sp_", "xp_", "msdb.."
         //};
@@ -258,7 +257,6 @@ namespace DealerSetu_Services.Services
         //}
 
 
-        // Add this method to your FileValidationService class
         public async Task<ServiceResponse> ValidateImageAsync(IFormFile imageFile, long maxFileSize)
         {
             var response = new ServiceResponse();
@@ -784,26 +782,7 @@ namespace DealerSetu_Services.Services
 
             // Regex: Allows letters (a-z, A-Z), numbers (0-9), and spaces
             return Regex.IsMatch(decoded, @"^[a-zA-Z0-9\s()./&-]+$");
-        }
-
-        //public bool IsValidEmail(string email)
-        //{
-        //    if (string.IsNullOrWhiteSpace(email))
-        //        return false;
-
-        //    try
-        //    {
-        //        // Regex: Basic email pattern allowing only @ and . as special chars
-        //        return Regex.IsMatch(email,
-        //            @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
-        //            RegexOptions.IgnoreCase,
-        //            TimeSpan.FromMilliseconds(250));
-        //    }
-        //    catch (RegexMatchTimeoutException)
-        //    {
-        //        return false;
-        //    }
-        //}
+        }       
 
         // Helper methods to create consistent responses
         private ServiceResponse CreateErrorResponse(string error, string code, string message)

@@ -9,7 +9,7 @@ namespace DealerSetu_Data.Models.RequestModels
 {
     public class ActualClaimUpdateRequest
     {
-        public int ClaimId { get; set; } // Required for update
+        public int ActivityId { get; set; } // Required for update
         public string? ActualExpenses { get; set; }
         public string? DateOfActivity { get; set; }
         public string? CustomerContacted { get; set; }

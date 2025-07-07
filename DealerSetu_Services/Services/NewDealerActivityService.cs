@@ -315,8 +315,8 @@ namespace DealerSetu_Services.Services
                 if (request == null)
                     throw new ArgumentNullException(nameof(request), "Actual claim update request cannot be null");
 
-                if (request.ClaimId <= 0)
-                    throw new ArgumentException("ClaimId must be greater than 0", nameof(request.ClaimId));
+                if (request.ActivityId <= 0)
+                    throw new ArgumentException("ClaimId must be greater than 0", nameof(request.ActivityId));
 
                 // Validate request data for malicious content (only non-null fields)
                 var validationResult = ValidateActualClaimUpdateForMaliciousContent(request);

@@ -8,7 +8,7 @@ namespace DealerSetu_Data.Models.ViewModels
 {
     public class ActualClaimUpdateModel
     {
-        public int ClaimId { get; set; }
+        public int ActivityId { get; set; }
         public string? EmpNo { get; set; }
         public string? ActualExpenses { get; set; }
         public string? DateOfActivity { get; set; }

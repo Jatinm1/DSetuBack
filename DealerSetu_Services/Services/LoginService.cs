@@ -133,7 +133,11 @@ namespace DealerSetu_Services.Services
             }
             catch (Exception ex)
             {
-                return CreateErrorResponse($"Error retrieving pending counts: {ex.Message}", "500", ex.Message);
+                //----Development----
+                //return CreateErrorResponse($"Error retrieving pending counts: {ex.Message}", "500", ex.Message); 
+
+                //----Production----
+                return CreateErrorResponse("Error retrieving pending counts", "500"); 
             }
         }
 
@@ -158,10 +162,16 @@ namespace DealerSetu_Services.Services
             }
             catch (Exception ex)
             {
+                //----Development----
+                //return CreateErrorResponse(
+                //    "System cannot find the combination of this username and password, please try again",
+                //    "400",
+                //    ex.Message); 
+
+                //----Production----
                 return CreateErrorResponse(
-                    "System cannot find the combination of this username and password, please try again",
-                    "400",
-                    ex.Message);
+                    "Username or Password is Incorrect, please try again",
+                    "400"); 
             }
         }
 
@@ -193,10 +203,16 @@ namespace DealerSetu_Services.Services
             }
             catch (Exception ex)
             {
+                //----Development----
+                //return CreateErrorResponse(
+                //    "System cannot find the combination of this username and password, please try again",
+                //    "400",
+                //    ex.Message); 
+
+                //----Production----
                 return CreateErrorResponse(
                     "System cannot find the combination of this username and password, please try again",
-                    "400",
-                    ex.Message);
+                    "400"); 
             }
         }
 
@@ -226,7 +242,11 @@ namespace DealerSetu_Services.Services
             }
             catch (Exception ex)
             {
-                return CreateErrorResponse($"Failed to logout: {ex.Message}", "500", ex.Message);
+                //----Development----
+                //return CreateErrorResponse($"Failed to logout: {ex.Message}", "500", ex.Message);
+
+                //----Production----
+                return CreateErrorResponse("Failed to logout", "500");
             }
         }
 

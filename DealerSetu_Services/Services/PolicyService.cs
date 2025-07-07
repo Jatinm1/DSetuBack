@@ -124,37 +124,37 @@ namespace dealersetu_services.services
 
             try
             {
-                // Validate file size
-                if (request.RecomendationFileName.Length > MAX_FILE_SIZE_BYTES)
-                {
-                    response.Status = "Failure";
-                    response.Code = "400";
-                    response.Error = $"File size exceeds the maximum allowed size of {MAX_FILE_SIZE_BYTES / (1024 * 1024)} MB";
-                    response.isError = true;
-                    return response;
-                }
+                //// Validate file size
+                //if (request.RecomendationFileName.Length > MAX_FILE_SIZE_BYTES)
+                //{
+                //    response.Status = "Failure";
+                //    response.Code = "400";
+                //    response.Error = $"File size exceeds the maximum allowed size of {MAX_FILE_SIZE_BYTES / (1024 * 1024)} MB";
+                //    response.isError = true;
+                //    return response;
+                //}
 
-                // Validate file extension and type
-                var fileExtension = Path.GetExtension(request.RecomendationFileName.FileName);
-                if (string.IsNullOrWhiteSpace(fileExtension))
-                {
-                    response.Status = "Failure";
-                    response.Code = "400";
-                    response.Error = "File must have a valid extension";
-                    response.isError = true;
-                    return response;
-                }
+                //// Validate file extension and type
+                //var fileExtension = Path.GetExtension(request.RecomendationFileName.FileName);
+                //if (string.IsNullOrWhiteSpace(fileExtension))
+                //{
+                //    response.Status = "Failure";
+                //    response.Code = "400";
+                //    response.Error = "File must have a valid extension";
+                //    response.isError = true;
+                //    return response;
+                //}
 
-                var magicNumberType = MagicNumberClass.MagicNumber(request.RecomendationFileName);
+                //var magicNumberType = MagicNumberClass.MagicNumber(request.RecomendationFileName);
 
-                if (string.IsNullOrEmpty(magicNumberType) || !VALID_EXTENSIONS.Contains(fileExtension.ToLowerInvariant()))
-                {
-                    response.Status = "Failure";
-                    response.Code = "400";
-                    response.Error = "Invalid file type. Allowed types: " + VALID_EXTENSIONS.Replace("|", ", ");
-                    response.isError = true;
-                    return response;
-                }
+                //if (string.IsNullOrEmpty(magicNumberType) || !VALID_EXTENSIONS.Contains(fileExtension.ToLowerInvariant()))
+                //{
+                //    response.Status = "Failure";
+                //    response.Code = "400";
+                //    response.Error = "Invalid file type. Allowed types: " + VALID_EXTENSIONS.Replace("|", ", ");
+                //    response.isError = true;
+                //    return response;
+                //}
 
                 // Generate unique filename
                 var updatedFileName = GenerateUniqueFileName(request.RecomendationFileName.FileName);

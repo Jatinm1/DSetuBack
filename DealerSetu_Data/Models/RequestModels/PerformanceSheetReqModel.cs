@@ -12,4 +12,9 @@ namespace DealerSetu_Data.Models.RequestModels
         public int Month { get; set; }
         public required string FYear { get; set; }
     }
+    public class PdfUploadModel
+    {
+        public string Base64Data { get; set; } = string.Empty;
+        public string FileName { get; set; } = "document.pdf";
+    }
 }

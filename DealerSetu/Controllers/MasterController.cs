@@ -2,10 +2,6 @@
 using DealerSetu_Services.IServices;
 using Microsoft.AspNetCore.Mvc;
 using DealerSetu.Repository.Common;
-using System.Threading.Tasks;
-using System;
-using Microsoft.Extensions.Configuration;
-using System.Collections.Generic;
 using DealerSetu_Data.Models.RequestModels;
 using DealerSetu_Data.Models.HelperModels;
 

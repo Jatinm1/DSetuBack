@@ -5,6 +5,7 @@ using DealerSetu_Data.Models.RequestModels;
 using DealerSetu_Services.IServices;
 using Microsoft.AspNetCore.Mvc;
 using DealerSetu_Data.Models.ViewModels;
+using System.Globalization;
 
 namespace DealerSetu.Controllers
 {
@@ -20,7 +21,6 @@ namespace DealerSetu.Controllers
         private readonly Utility _utility;
         private readonly FileLoggerService _logger;
         private const long MaxFileSize = 20 * 1024 * 1024; // 20 MB
-
 
         public NewDealerActivityController(
             INewDealerActivityService newDealerService,
@@ -48,7 +48,14 @@ namespace DealerSetu.Controllers
                 var validationResult = _validationHelper.ValidateNewDealerApprovedRequest(request);
                 if (validationResult != null)
                 {
-                    return BadRequest(validationResult);
+                    return BadRequest(new ServiceResponse
+                    {
+                        isError = true,
+                        Error = "Validation failed",
+                        Message = validationResult.ToString(),
+                        Status = "Error",
+                        Code = "400"
+                    });
                 }
 
                 var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
@@ -72,7 +79,14 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError("NewDealerActivityController", "Error in NewDealerActivityApproved", ex);
-                return StatusCode(500, "An error occurred while processing your request.");
+                return StatusCode(500, new ServiceResponse
+                {
+                    isError = true,
+                    Error = ex.Message,
+                    Message = "An error occurred while processing your request.",
+                    Status = "Error",
+                    Code = "500"
+                });
             }
         }
 
@@ -84,7 +98,14 @@ namespace DealerSetu.Controllers
                 var validationResult = _validationHelper.ValidateNewDealerPendingRequest(request);
                 if (validationResult != null)
                 {
-                    return BadRequest(validationResult);
+                    return BadRequest(new ServiceResponse
+                    {
+                        isError = true,
+                        Error = "Validation failed",
+                        Message = validationResult.ToString(),
+                        Status = "Error",
+                        Code = "400"
+                    });
                 }
 
                 var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
@@ -105,7 +126,14 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError("NewDealerActivityController", "Error in NewDealerActivityPending", ex);
-                return StatusCode(500, "An error occurred while processing your request.");
+                return StatusCode(500, new ServiceResponse
+                {
+                    isError = true,
+                    Error = ex.Message,
+                    Message = "An error occurred while processing your request.",
+                    Status = "Error",
+                    Code = "500"
+                });
             }
         }
 
@@ -123,7 +151,14 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError("NewDealerActivityController", "Error in GetDealerData", ex);
-                return StatusCode(500, "An error occurred while processing your request.");
+                return StatusCode(500, new ServiceResponse
+                {
+                    isError = true,
+                    Error = ex.Message,
+                    Message = "An error occurred while processing your request.",
+                    Status = "Error",
+                    Code = "500"
+                });
             }
         }
 
@@ -133,12 +168,6 @@ namespace DealerSetu.Controllers
             try
             {
                 var response = await _newDealerService.DealerStatesService();
-
-                if (response.isError == true)
-                {
-                    return StatusCode(500, response);
-                }
-
                 return Ok(response);
             }
             catch (Exception ex)
@@ -164,16 +193,44 @@ namespace DealerSetu.Controllers
                 foreach (var activity in request.ActivityData)
                 {
                     if (string.IsNullOrWhiteSpace(activity.ActivityType))
-                        return BadRequest("ActivityType is required.");
+                        return BadRequest(new ServiceResponse
+                        {
+                            isError = true,
+                            Error = "Validation failed",
+                            Message = "ActivityType is required.",
+                            Status = "Error",
+                            Code = "400"
+                        });
 
                     if (string.IsNullOrWhiteSpace(activity.ActivityThrough))
-                        return BadRequest("ActivityThrough is required.");
+                        return BadRequest(new ServiceResponse
+                        {
+                            isError = true,
+                            Error = "Validation failed",
+                            Message = "ActivityThrough is required.",
+                            Status = "Error",
+                            Code = "400"
+                        });
 
                     if (string.IsNullOrWhiteSpace(activity.BudgetRequested))
-                        return BadRequest("BudgetRequested is required.");
+                        return BadRequest(new ServiceResponse
+                        {
+                            isError = true,
+                            Error = "Validation failed",
+                            Message = "BudgetRequested is required.",
+                            Status = "Error",
+                            Code = "400"
+                        });
 
                     if (string.IsNullOrWhiteSpace(activity.ActivityMonth))
-                        return BadRequest("ActivityMonth is required.");
+                        return BadRequest(new ServiceResponse
+                        {
+                            isError = true,
+                            Error = "Validation failed",
+                            Message = "ActivityMonth is required.",
+                            Status = "Error",
+                            Code = "400"
+                        });
                 }
 
                 var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
@@ -191,31 +248,65 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError("NewDealerActivityController", "Error in SubmitClaim", ex);
-                return StatusCode(500, "An error occurred while submitting the claim.");
+                return StatusCode(500, new ServiceResponse
+                {
+                    isError = true,
+                    Error = ex.Message,
+                    Message = "An error occurred while submitting the claim.",
+                    Status = "Error",
+                    Code = "500"
+                });
             }
         }
-
 
         [HttpPost("UpdateClaim")]
         public async Task<IActionResult> UpdateClaim([FromBody] ClaimUpdationRequest request)
         {
             try
             {
-
                 foreach (var activity in request.ActivityData)
                 {
                     if (string.IsNullOrWhiteSpace(activity.ActivityType))
-                        return BadRequest("ActivityType is required.");
+                        return BadRequest(new ServiceResponse
+                        {
+                            isError = true,
+                            Error = "Validation failed",
+                            Message = "ActivityType is required.",
+                            Status = "Error",
+                            Code = "400"
+                        });
 
                     if (string.IsNullOrWhiteSpace(activity.ActivityThrough))
-                        return BadRequest("ActivityThrough is required.");
+                        return BadRequest(new ServiceResponse
+                        {
+                            isError = true,
+                            Error = "Validation failed",
+                            Message = "ActivityThrough is required.",
+                            Status = "Error",
+                            Code = "400"
+                        });
 
                     if (string.IsNullOrWhiteSpace(activity.BudgetRequested))
-                        return BadRequest("BudgetRequested is required.");
+                        return BadRequest(new ServiceResponse
+                        {
+                            isError = true,
+                            Error = "Validation failed",
+                            Message = "BudgetRequested is required.",
+                            Status = "Error",
+                            Code = "400"
+                        });
 
                     if (string.IsNullOrWhiteSpace(activity.ActivityMonth))
-                        return BadRequest("ActivityMonth is required.");
+                        return BadRequest(new ServiceResponse
+                        {
+                            isError = true,
+                            Error = "Validation failed",
+                            Message = "ActivityMonth is required.",
+                            Status = "Error",
+                            Code = "400"
+                        });
                 }
+
                 var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
                 var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
 
@@ -230,7 +321,14 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError("NewDealerActivityController", "Error in UpdateClaim", ex);
-                return StatusCode(500, "An error occurred while Updating the claim.");
+                return StatusCode(500, new ServiceResponse
+                {
+                    isError = true,
+                    Error = ex.Message,
+                    Message = "An error occurred while updating the claim.",
+                    Status = "Error",
+                    Code = "500"
+                });
             }
         }
 
@@ -242,14 +340,20 @@ namespace DealerSetu.Controllers
                 var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
                 var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
 
-
                 var result = await _newDealerService.ClaimDetailsService(request.ClaimId);
                 return Ok(result);
             }
             catch (Exception ex)
             {
                 _logger.LogError("NewDealerActivityController", "Error in GetClaimDetails", ex);
-                return StatusCode(500, "An error occurred while fetching claim details.");
+                return StatusCode(500, new ServiceResponse
+                {
+                    isError = true,
+                    Error = ex.Message,
+                    Message = "An error occurred while fetching claim details.",
+                    Status = "Error",
+                    Code = "500"
+                });
             }
         }
 
@@ -274,57 +378,84 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError("NewDealerActivityController", "Error in ApproveRejectClaim", ex);
-                return BadRequest(ex.Message);
+                return StatusCode(500, new ServiceResponse
+                {
+                    isError = true,
+                    Error = ex.Message,
+                    Message = "An error occurred while processing the request.",
+                    Status = "Error",
+                    Code = "500"
+                });
             }
         }
-
-
-        //*******************************************ACTUAL CLAIM APIS*****************************************
 
         [HttpPost("AddActualClaim")]
         public async Task<IActionResult> AddClaim([FromForm] ActualClaimAddRequest request)
         {
             try
             {
-
                 if (request.ActivityId == null || request.ActivityId == 0)
                 {
-                    return BadRequest(_utility.CreateErrorResponse(
-                        "Invalid payload", "ActivityId must not be null or 0", "400"));
+                    return BadRequest(new ServiceResponse
+                    {
+                        isError = true,
+                        Error = "Invalid payload",
+                        Message = "ActivityId must not be null or 0",
+                        Status = "Error",
+                        Code = "400"
+                    });
                 }
 
                 var validationFields = new Dictionary<string, string>
-        {
-            { "Enquiry", request.Enquiry },
-            { "ActualExpenses", request.ActualExpenses },
-            { "DateOfActivity", request.DateOfActivity },
-            { "CustomerContacted", request.CustomerContacted },
-            { "Delivery", request.Delivery }
-        };
+                {
+                    { "Enquiry", request.Enquiry },
+                    { "ActualExpenses", request.ActualExpenses },
+                    { "DateOfActivity", request.DateOfActivity },
+                    { "CustomerContacted", request.CustomerContacted },
+                    { "Delivery", request.Delivery }
+                };
 
                 foreach (var field in validationFields)
                 {
                     if (string.IsNullOrWhiteSpace(field.Value))
                     {
-                        return BadRequest(_utility.CreateErrorResponse(
-                            "Invalid payload", $"{field.Key} field is required", "400"));
+                        return BadRequest(new ServiceResponse
+                        {
+                            isError = true,
+                            Error = "Invalid payload",
+                            Message = $"{field.Key} field is required",
+                            Status = "Error",
+                            Code = "400"
+                        });
                     }
                 }
 
                 // Check if DateOfActivity is after 01/01/2000
-                if (!DateTime.TryParse(request.DateOfActivity, out DateTime parsedDate))
+                if (!DateTime.TryParseExact(request.DateOfActivity, "dd/MM/yyyy",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedDate))
                 {
-                    return BadRequest(_utility.CreateErrorResponse(
-                        "Invalid payload", "DateOfActivity is not a valid date", "400"));
+                    return BadRequest(new ServiceResponse
+                    {
+                        isError = true,
+                        Error = "Invalid payload",
+                        Message = "DateOfActivity is not a valid date",
+                        Status = "Error",
+                        Code = "400"
+                    });
                 }
 
                 var minValidDate = new DateTime(2000, 1, 1);
                 if (parsedDate <= minValidDate)
                 {
-                    return BadRequest(_utility.CreateErrorResponse(
-                        "Invalid payload", "DateOfActivity must be after 01/01/2000", "400"));
+                    return BadRequest(new ServiceResponse
+                    {
+                        isError = true,
+                        Error = "Invalid payload",
+                        Message = "DateOfActivity must be after 01/01/2000",
+                        Status = "Error",
+                        Code = "400"
+                    });
                 }
-
 
                 var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
                 var model = new ActualClaimModel
@@ -338,19 +469,14 @@ namespace DealerSetu.Controllers
                     Delivery = request.Delivery,
                     ActualClaimOn = DateTime.Now
                 };
-                //if (request.Image1 == null)
-                //{
-                //    return StatusCode(400, "Atleast 1 Image is required");
-                //}
-                // Process image uploads if present
+
                 #region Validation For Image Files
-                // Validate each image if present
                 if (request.Image1 != null)
                 {
                     var validationResult = await _fileValidationService.ValidateImageAsync(request.Image1, MaxFileSize);
                     if ((bool)validationResult.isError)
                     {
-                        return StatusCode(int.Parse(validationResult.Code), new { Message = validationResult.Message });
+                        return StatusCode(int.Parse(validationResult.Code), validationResult);
                     }
                 }
                 if (request.Image2 != null)
@@ -358,7 +484,7 @@ namespace DealerSetu.Controllers
                     var validationResult = await _fileValidationService.ValidateImageAsync(request.Image2, MaxFileSize);
                     if ((bool)validationResult.isError)
                     {
-                        return StatusCode(int.Parse(validationResult.Code), new { Message = validationResult.Message });
+                        return StatusCode(int.Parse(validationResult.Code), validationResult);
                     }
                 }
                 if (request.Image3 != null)
@@ -366,10 +492,11 @@ namespace DealerSetu.Controllers
                     var validationResult = await _fileValidationService.ValidateImageAsync(request.Image3, MaxFileSize);
                     if ((bool)validationResult.isError)
                     {
-                        return StatusCode(int.Parse(validationResult.Code), new { Message = validationResult.Message });
+                        return StatusCode(int.Parse(validationResult.Code), validationResult);
                     }
                 }
                 #endregion
+
                 if (request.Image1 != null && request.Image1.Length > 0)
                 {
                     model.Image1 = await _blobStorageService.UploadFileAsync(request.Image1);
@@ -382,27 +509,39 @@ namespace DealerSetu.Controllers
                 {
                     model.Image3 = await _blobStorageService.UploadFileAsync(request.Image3);
                 }
+
                 var result = await _newDealerService.AddActualClaimService(model);
                 return Ok(result);
             }
             catch (Exception ex)
             {
                 _logger.LogError("NewDealerActivityController", "Error in AddUpdateClaim", ex);
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                return StatusCode(500, new ServiceResponse
+                {
+                    isError = true,
+                    Error = ex.Message,
+                    Message = "Internal server error",
+                    Status = "Error",
+                    Code = "500"
+                });
             }
         }
 
-
         [HttpPost("UpdateActualClaim")]
-        public async Task<IActionResult> UpdateClaim([FromForm] ActualClaimUpdateRequest request)
+        public async Task<IActionResult> UpdateActualClaim([FromForm] ActualClaimUpdateRequest request)
         {
             try
             {
-                // Validate ClaimId is required
-                if (request.ClaimId == null || request.ClaimId == 0)
+                if (request.ActivityId == null || request.ActivityId == 0)
                 {
-                    return BadRequest(_utility.CreateErrorResponse(
-                        "Invalid payload", "ClaimId must not be null or 0", "400"));
+                    return BadRequest(new ServiceResponse
+                    {
+                        isError = true,
+                        Error = "Invalid payload",
+                        Message = "ActivityId must not be null or 0",
+                        Status = "Error",
+                        Code = "400"
+                    });
                 }
 
                 // Validate DateOfActivity if provided
@@ -410,22 +549,34 @@ namespace DealerSetu.Controllers
                 {
                     if (!DateTime.TryParse(request.DateOfActivity, out DateTime parsedDate))
                     {
-                        return BadRequest(_utility.CreateErrorResponse(
-                            "Invalid payload", "DateOfActivity is not a valid date", "400"));
+                        return BadRequest(new ServiceResponse
+                        {
+                            isError = true,
+                            Error = "Invalid payload",
+                            Message = "DateOfActivity is not a valid date",
+                            Status = "Error",
+                            Code = "400"
+                        });
                     }
 
                     var minValidDate = new DateTime(2000, 1, 1);
                     if (parsedDate <= minValidDate)
                     {
-                        return BadRequest(_utility.CreateErrorResponse(
-                            "Invalid payload", "DateOfActivity must be after 01/01/2000", "400"));
+                        return BadRequest(new ServiceResponse
+                        {
+                            isError = true,
+                            Error = "Invalid payload",
+                            Message = "DateOfActivity must be after 01/01/2000",
+                            Status = "Error",
+                            Code = "400"
+                        });
                     }
                 }
 
                 var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
                 var model = new ActualClaimUpdateModel
                 {
-                    ClaimId = request.ClaimId,
+                    ActivityId = request.ActivityId,
                     EmpNo = empNo,
                     ActualExpenses = request.ActualExpenses,
                     DateOfActivity = request.DateOfActivity,
@@ -436,13 +587,12 @@ namespace DealerSetu.Controllers
                 };
 
                 #region Validation For Image Files
-                // Validate each image if present
                 if (request.Image1 != null)
                 {
                     var validationResult = await _fileValidationService.ValidateImageAsync(request.Image1, MaxFileSize);
                     if ((bool)validationResult.isError)
                     {
-                        return StatusCode(int.Parse(validationResult.Code), new { Message = validationResult.Message });
+                        return StatusCode(int.Parse(validationResult.Code), validationResult);
                     }
                 }
                 if (request.Image2 != null)
@@ -450,7 +600,7 @@ namespace DealerSetu.Controllers
                     var validationResult = await _fileValidationService.ValidateImageAsync(request.Image2, MaxFileSize);
                     if ((bool)validationResult.isError)
                     {
-                        return StatusCode(int.Parse(validationResult.Code), new { Message = validationResult.Message });
+                        return StatusCode(int.Parse(validationResult.Code), validationResult);
                     }
                 }
                 if (request.Image3 != null)
@@ -458,7 +608,7 @@ namespace DealerSetu.Controllers
                     var validationResult = await _fileValidationService.ValidateImageAsync(request.Image3, MaxFileSize);
                     if ((bool)validationResult.isError)
                     {
-                        return StatusCode(int.Parse(validationResult.Code), new { Message = validationResult.Message });
+                        return StatusCode(int.Parse(validationResult.Code), validationResult);
                     }
                 }
                 #endregion
@@ -482,11 +632,17 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError("NewDealerActivityController", "Error in UpdateClaim", ex);
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                _logger.LogError("NewDealerActivityController", "Error in UpdateActualClaim", ex);
+                return StatusCode(500, new ServiceResponse
+                {
+                    isError = true,
+                    Error = ex.Message,
+                    Message = "Internal server error",
+                    Status = "Error",
+                    Code = "500"
+                });
             }
         }
-
 
         [HttpPost("GetActualClaimDetails")]
         public async Task<IActionResult> GetActualClaimDetails([FromBody] ActualClaimDetailReq request)
@@ -501,7 +657,14 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError("NewDealerActivityController", "Error in GetActualClaimDetails", ex);
-                return StatusCode(500, "An error occurred while fetching claim details.");
+                return StatusCode(500, new ServiceResponse
+                {
+                    isError = true,
+                    Error = ex.Message,
+                    Message = "An error occurred while fetching claim details.",
+                    Status = "Error",
+                    Code = "500"
+                });
             }
         }
 
@@ -520,14 +683,20 @@ namespace DealerSetu.Controllers
                     ClaimId = request.ClaimId
                 };
 
-
                 var result = await _newDealerService.ActualClaimListService(filter);
                 return Ok(result);
             }
             catch (Exception ex)
             {
                 _logger.LogError("NewDealerActivityController", "Error in GetActualClaimList", ex);
-                return StatusCode(500, "An error occurred while fetching claim details.");
+                return StatusCode(500, new ServiceResponse
+                {
+                    isError = true,
+                    Error = ex.Message,
+                    Message = "An error occurred while fetching claim details.",
+                    Status = "Error",
+                    Code = "500"
+                });
             }
         }
 
@@ -536,7 +705,6 @@ namespace DealerSetu.Controllers
         {
             try
             {
-
                 var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
                 var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
 
@@ -547,17 +715,22 @@ namespace DealerSetu.Controllers
                     ActivityId = request.ActivityId,
                     IsApproved = request.IsApproved,
                     RejectRemarks = request.RejectRemarks
-
                 };
 
                 var result = await _newDealerService.ApproveRejectActualClaimService(filter);
-
                 return Ok(result);
             }
             catch (Exception ex)
             {
                 _logger.LogError("NewDealerActivityController", "Error in ApproveRejectActualClaim", ex);
-                return BadRequest(ex.Message);
+                return StatusCode(500, new ServiceResponse
+                {
+                    isError = true,
+                    Error = ex.Message,
+                    Message = "An error occurred while processing the request.",
+                    Status = "Error",
+                    Code = "500"
+                });
             }
         }
 
@@ -574,7 +747,14 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError("NewDealerActivityController", "Error in AddActualRemarks", ex);
-                return StatusCode(500, "An error occurred while fetching claim details.");
+                return StatusCode(500, new ServiceResponse
+                {
+                    isError = true,
+                    Error = ex.Message,
+                    Message = "An error occurred while processing the request.",
+                    Status = "Error",
+                    Code = "500"
+                });
             }
         }
     }

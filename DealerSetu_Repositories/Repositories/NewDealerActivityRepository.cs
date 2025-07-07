@@ -95,7 +95,6 @@ namespace DealerSetu_Repositories.Repositories
             parameters.Add("@ToDate", filter.To);
             parameters.Add("@PageIndex", pageIndex);
             parameters.Add("@PageSize", pageSize);
-            Console.WriteLine("Hello"+filter.From);
             using var multi = await connection.QueryMultipleAsync(
                 "sp_NEWDEALER_GetPendingClaimList", parameters, commandType: CommandType.StoredProcedure);
 
@@ -287,7 +286,7 @@ namespace DealerSetu_Repositories.Repositories
             await connection.OpenAsync();
 
             var parameters = new DynamicParameters();
-            parameters.Add("@ClaimId", actualClaim.ClaimId);
+            parameters.Add("@ActivityId", actualClaim.ActivityId);
             parameters.Add("@EmpNo", actualClaim.EmpNo);
             parameters.Add("@ActualExpenses", actualClaim.ActualExpenses);
             parameters.Add("@DateOfActivity", actualClaim.DateOfActivity);
