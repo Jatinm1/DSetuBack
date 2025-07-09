@@ -42,12 +42,12 @@ namespace DealerSetu.Controllers
         }
 
         [HttpPost("UploadPolicyPdf")]
-        public async Task<IActionResult> SendFiletoServer([FromForm] PolicyUploadModel model, int RAId)
+        public async Task<IActionResult> SendFiletoServer([FromForm] PolicyUploadModel model)
         {
             try
             {
                 // Call the service to handle file upload
-                var result = await _policyService.SendFiletoServerService(model, RAId);
+                var result = await _policyService.SendFiletoServerService(model);
                 return Ok(result);
             }
             catch (Exception ex)

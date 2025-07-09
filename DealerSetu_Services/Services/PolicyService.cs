@@ -99,12 +99,12 @@ namespace dealersetu_services.services
         /// <param name="request">Policy upload request containing file and metadata</param>
         /// <param name="RAId">Related Agreement ID</param>
         /// <returns>ServiceResponse indicating success or failure of the upload operation</returns>
-        public async Task<ServiceResponse> SendFiletoServerService(PolicyUploadModel request, int RAId)
+        public async Task<ServiceResponse> SendFiletoServerService(PolicyUploadModel request)
         {
             var response = new ServiceResponse();
 
             // Validate input parameters
-            if (request?.RecomendationFileName == null)
+            if (request?.FileName == null)
             {
                 response.Status = "Failure";
                 response.Code = "400";
@@ -113,19 +113,10 @@ namespace dealersetu_services.services
                 return response;
             }
 
-            if (RAId <= 0)
-            {
-                response.Status = "Failure";
-                response.Code = "400";
-                response.Error = "Invalid RA ID";
-                response.isError = true;
-                return response;
-            }
-
             try
             {
                 //// Validate file size
-                //if (request.RecomendationFileName.Length > MAX_FILE_SIZE_BYTES)
+                //if (request.FileName.Length > MAX_FILE_SIZE_BYTES)
                 //{
                 //    response.Status = "Failure";
                 //    response.Code = "400";
@@ -135,7 +126,7 @@ namespace dealersetu_services.services
                 //}
 
                 //// Validate file extension and type
-                //var fileExtension = Path.GetExtension(request.RecomendationFileName.FileName);
+                //var fileExtension = Path.GetExtension(request.FileName.FileName);
                 //if (string.IsNullOrWhiteSpace(fileExtension))
                 //{
                 //    response.Status = "Failure";
@@ -145,7 +136,7 @@ namespace dealersetu_services.services
                 //    return response;
                 //}
 
-                //var magicNumberType = MagicNumberClass.MagicNumber(request.RecomendationFileName);
+                //var magicNumberType = MagicNumberClass.MagicNumber(request.FileName);
 
                 //if (string.IsNullOrEmpty(magicNumberType) || !VALID_EXTENSIONS.Contains(fileExtension.ToLowerInvariant()))
                 //{
@@ -157,10 +148,10 @@ namespace dealersetu_services.services
                 //}
 
                 // Generate unique filename
-                var updatedFileName = GenerateUniqueFileName(request.RecomendationFileName.FileName);
+                var updatedFileName = GenerateUniqueFileName(request.FileName.FileName);
 
                 // Upload to Azure Blob Storage
-                var blobUrl = await AddDocs(request.RecomendationFileName, updatedFileName);
+                var blobUrl = await AddDocs(request.FileName, updatedFileName);
                 if (string.IsNullOrWhiteSpace(blobUrl))
                 {
                     response.Status = "Failure";
@@ -168,12 +159,10 @@ namespace dealersetu_services.services
                     response.Error = "Failed to upload file to storage";
                     response.isError = true;
                     return response;
-                }
-
-                request.UpdatedName = updatedFileName;
+                }                
 
                 // Save to database
-                var result = _policyRepository.SendFilesToServerRepo(request, RAId);
+                var result = _policyRepository.SendFilesToServerRepo(request,updatedFileName);
 
                 response.Status = "Success";
                 response.Code = "200";

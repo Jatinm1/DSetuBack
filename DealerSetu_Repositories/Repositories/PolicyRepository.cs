@@ -57,17 +57,13 @@ namespace DealerSetu_Repositories.Repositories
         /// Uploads policy files to server and updates database with file information
         /// </summary>
         /// <param name="model">Policy upload model containing file details</param>
-        /// <param name="raId">Recommendation Action ID</param>
         /// <returns>Success code "200" or error message</returns>
-        public string SendFilesToServerRepo(PolicyUploadModel model, int raId)
+        public string SendFilesToServerRepo(PolicyUploadModel model,string updatedFileName)
         {
             if (model == null)
                 return "Invalid upload model";
 
-            if (raId <= 0)
-                return "Invalid RA ID";
-
-            if (string.IsNullOrWhiteSpace(model.UpdatedName))
+            if (string.IsNullOrWhiteSpace(updatedFileName))
                 return "File name is required";
 
             try
@@ -75,9 +71,8 @@ namespace DealerSetu_Repositories.Repositories
                 using var connection = new SqlConnection(_connectionString);
 
                 var parameters = new DynamicParameters();
-                parameters.Add("@recomendationFileName", model.UpdatedName);
-                parameters.Add("@RAId", raId);
-                parameters.Add("@ContentType", model.RecomendationFileName?.ContentType ?? "application/octet-stream");
+                parameters.Add("@FileName", updatedFileName);
+                parameters.Add("@ContentType", model.FileName?.ContentType ?? "application/octet-stream");
 
                 var result = connection.Execute(
                     "sp_UPLOAD_NewFileToBLOB",

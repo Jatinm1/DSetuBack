@@ -10,8 +10,8 @@ namespace DealerSetu_Data.Models.HelperModels
 {
     public class PolicyUploadModel
     {
-        public IFormFile? RecomendationFileName { get; set; }
-        [AlphaNumeric]
-        public string? UpdatedName { get; set; }
+        public IFormFile? FileName { get; set; }
+        //[AlphaNumeric]
+        //public string? UpdatedName { get; set; }
     }
 }
