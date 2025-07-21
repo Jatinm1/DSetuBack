@@ -10,7 +10,7 @@ namespace DealerSetu_Repositories.IRepositories
     public interface IWhiteVillageRepository
     {
         Task<IEnumerable<WhiteVillageModel>> GetWhiteListingRepo();
-        Task<string> SaveWhiteVillageFileMetadata(string blobUrl, string stateId, string createdBy, string fiscalYear);
+        Task<(string Filename, string Result)> SaveWhiteVillageFileMetadata(string filename, string stateId, string createdBy, string fiscalYear);
         Task<List<StateModel>> GetStateListRepo();
         Task<string> WhiteVillageDownloadRepo(string fileName);
 

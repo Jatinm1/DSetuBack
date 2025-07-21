@@ -58,7 +58,7 @@ namespace DealerSetu_Repositories.Repositories
         /// </summary>
         /// <param name="model">Policy upload model containing file details</param>
         /// <returns>Success code "200" or error message</returns>
-        public string SendFilesToServerRepo(PolicyUploadModel model,string updatedFileName)
+        public string SendFilesToServerRepo(FileUploadModel model,string updatedFileName)
         {
             if (model == null)
                 return "Invalid upload model";
@@ -76,6 +76,40 @@ namespace DealerSetu_Repositories.Repositories
 
                 var result = connection.Execute(
                     "sp_UPLOAD_NewFileToBLOB",
+                    parameters,
+                    commandType: CommandType.StoredProcedure);
+
+                return result > 0 ? "200" : "File upload failed";
+            }
+            catch (SqlException)
+            {
+                return "Database error during file upload";
+            }
+            catch (Exception)
+            {
+                return "File upload operation failed";
+            }
+        }
+
+        public string SendPolicyToServerRepo(PolicyUploadModel model, string updatedFileName)
+        {
+            if (model == null)
+                return "Invalid upload model";
+
+            if (string.IsNullOrWhiteSpace(updatedFileName))
+                return "File name is required";
+
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+
+                var parameters = new DynamicParameters();
+                parameters.Add("@FileName", updatedFileName);
+                parameters.Add("@PolicyName", model.PolicyName);
+                parameters.Add("@ContentType", model.FileName?.ContentType ?? "application/octet-stream");
+
+                var result = connection.Execute(
+                    "sp_UPLOAD_NewFilesToBLOB",
                     parameters,
                     commandType: CommandType.StoredProcedure);
 

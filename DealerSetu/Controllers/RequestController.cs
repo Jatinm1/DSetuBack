@@ -3,12 +3,14 @@ using DealerSetu_Data.Common;
 using DealerSetu_Data.Models.HelperModels;
 using DealerSetu_Data.Models.RequestModels;
 using DealerSetu_Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DealerSetu.Controllers
 {
     [Route("[controller]")]
     [ApiController]
+    [RequestSectionAuthorize]
     public class RequestController : ControllerBase
     {
         private readonly IRequestService _requestService;
@@ -43,6 +45,8 @@ namespace DealerSetu.Controllers
         /// Retrieves available HP categories for filtering
         /// </summary>
         [HttpGet("HPCategoryFilter")]
+        [AllowAnonymous] // Bypass controller-level authorization
+        [HPCategoryAuthorize] // Apply specific authorization
         public async Task<IActionResult> HPCategoryFilter()
         {
             try

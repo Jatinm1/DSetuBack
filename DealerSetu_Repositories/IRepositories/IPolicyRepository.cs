@@ -13,7 +13,8 @@ namespace dealersetu_repositories.irepositories
     public interface IPolicyRepository
     {
         dynamic GetPolicyListRepo();
-        public string SendFilesToServerRepo(PolicyUploadModel model,string updatedFileName);
+        public string SendFilesToServerRepo(FileUploadModel model,string updatedFileName);
+        public string SendPolicyToServerRepo(PolicyUploadModel model,string updatedFileName);
 
     }
 }

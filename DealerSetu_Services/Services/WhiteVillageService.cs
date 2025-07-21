@@ -159,15 +159,15 @@ namespace DealerSetu_Services.Services
                 if ((bool)filenameValidation.isError)
                 {
                     return filenameValidation;
-                }
-
-                // Upload to blob storage
-                await UploadFileToBlob(whiteVillageFile, whiteVillageFile.FileName);
+                }               
 
                 // Save metadata
                 var fiscalYear = DetermineFiscalYear();
-                var saveResult = await _whiteVillageRepository.SaveWhiteVillageFileMetadata(
+                var (newFileName,saveResult) = await _whiteVillageRepository.SaveWhiteVillageFileMetadata(
                     whiteVillageFile.FileName, stateId, empNo, fiscalYear);
+
+                // Upload to blob storage
+                await UploadFileToBlob(whiteVillageFile, newFileName);
 
                 return new ServiceResponse
                 {

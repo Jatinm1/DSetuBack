@@ -46,6 +46,8 @@ builder.Services.AddScoped<IDemoRequestRepository, DemoRequestRepository>();
 builder.Services.AddScoped<IDemoRequestService, DemoRequestService>();
 builder.Services.AddScoped<INewDealerActivityRepository, NewDealerActivityRepository>();
 builder.Services.AddScoped<INewDealerActivityService, NewDealerActivityService>();
+builder.Services.AddScoped<ITempRepository, TempRepository>();
+builder.Services.AddScoped<ITempService, TempService>();
 builder.Services.AddScoped<IRequestRepository, RequestRepository>();
 builder.Services.AddScoped<IRequestService, RequestService>();
 builder.Services.AddScoped<IPerformanceSheetRepo, PerformanceSheetRepo>();
@@ -86,6 +88,39 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 #endregion
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequestSectionAccess", policy =>
+        policy.RequireRole("Dealer", "HO"));
+
+    options.AddPolicy("NewDealerActivityAccess", policy =>
+        policy.RequireRole("Dealer", "TM", "CCM", "CM", "SH", "HO", "AM"));
+
+    options.AddPolicy("DemoTractorAccess", policy =>
+        policy.RequireRole("Dealer", "TM", "CCM", "CM", "SH", "HO", "AM"));
+
+    options.AddPolicy("MasterSectionAccess", policy =>
+        policy.RequireRole("HO"));
+
+    options.AddPolicy("PerformanceAccess", policy =>
+        policy.RequireRole("Dealer", "TM", "CCM", "CM", "SH", "HO", "AM"));
+
+    options.AddPolicy("WhiteVillageKhojAccess", policy =>
+        policy.RequireRole("TM", "CCM", "CM", "SH", "HO", "AM"));
+
+    options.AddPolicy("ReportSectionAccess", policy =>
+        policy.RequireRole("HO"));
+
+    options.AddPolicy("HPCategoryAccess", policy =>
+    policy.RequireRole("Dealer", "TM", "CCM", "CM", "SH", "HO", "AM"));
+
+    options.AddPolicy("DownloadAccess", policy =>
+    policy.RequireRole("Dealer", "TM", "CCM", "CM", "SH", "HO", "AM"));
+});
+
+
+
 
 builder.Services.AddHttpContextAccessor();
 

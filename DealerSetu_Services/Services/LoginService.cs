@@ -58,7 +58,8 @@ namespace DealerSetu_Services.Services
         /// <returns>True if authentication is successful, false otherwise</returns>
         public async Task<bool> isLDAPAuthAsync(string userName, string password)
         {
-            if (string.IsNullOrWhiteSpace(userName) || string.IsNullOrWhiteSpace(password))
+            string escapedUserName = _utility.EscapeLDAPUsername(userName);
+            if (string.IsNullOrWhiteSpace(escapedUserName) || string.IsNullOrWhiteSpace(password))
                 return false;
 
             try
@@ -73,7 +74,7 @@ namespace DealerSetu_Services.Services
                 string domainName = paramsLogin.Length > 0 ? paramsLogin[0] : string.Empty;
 
                 // Combine domain and username (e.g., DOMAIN\username)
-                string domainAndUsername = $"{domainName}\\{userName}";
+                string domainAndUsername = $"{domainName}\\{escapedUserName}";
 
                 // Set the LDAP path 
                 string ldapPath = _configuration["ldapConfiguration:ADPath"];
@@ -87,7 +88,7 @@ namespace DealerSetu_Services.Services
                 {
                     try
                     {
-                        using (DirectoryEntry entry = new DirectoryEntry(ldapPath, userName, password))
+                        using (DirectoryEntry entry = new DirectoryEntry(ldapPath, escapedUserName, password))
                         {
                             return !string.IsNullOrEmpty(entry.Name);
                         }

@@ -303,5 +303,18 @@ namespace DealerSetu.Repository.Common
 
             return true;
         }
+
+        public string EscapeLDAPUsername(string input)
+        {
+            if (input == null)
+                return null;
+
+            return input
+                .Replace(@"\", @"\5c")
+                .Replace("*", @"\2a")
+                .Replace("(", @"\28")
+                .Replace(")", @"\29")
+                .Replace("\0", @"\00");
+        }
     }
 }

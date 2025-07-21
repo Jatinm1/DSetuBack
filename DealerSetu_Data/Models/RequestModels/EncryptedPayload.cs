@@ -11,7 +11,7 @@ namespace DealerSetu_Data.Models.RequestModels
         public string EncryptedData { get; set; }
         public string EncryptedKey { get; set; }
         public string EncryptedIV { get; set; }
-        //public string reCaptcha { get; set; }
+        public string reCaptcha { get; set; }
 
     }
 }

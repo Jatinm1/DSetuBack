@@ -2,20 +2,18 @@
 using DealerSetu_Data.Common;
 using DealerSetu_Data.Models.HelperModels;
 using DealerSetu_Data.Models.RequestModels;
-using DealerSetu_Data.Models.ViewModels;
 using DealerSetu_Services.IServices;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using DealerSetu_Data.Models.ViewModels;
 using System.Globalization;
 
 namespace DealerSetu.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    [Authorize(Policy = "NewDealerActivityAccess")]
-    public class NewDealerActivityController : ControllerBase
+    public class TempController : ControllerBase
     {
-        private readonly INewDealerActivityService _newDealerService;
+        private readonly ITempService _tempService;
         private readonly IBlobStorageService _blobStorageService;
         private readonly IFileValidationService _fileValidationService;
         private readonly JwtHelper _jwtHelper;
@@ -24,8 +22,8 @@ namespace DealerSetu.Controllers
         private readonly FileLoggerService _logger;
         private const long MaxFileSize = 20 * 1024 * 1024; // 20 MB
 
-        public NewDealerActivityController(
-            INewDealerActivityService newDealerService,
+        public TempController(
+            ITempService tempService,
             IBlobStorageService blobStorageService,
             JwtHelper jwtHelper,
             ValidationHelper validationHelper,
@@ -33,7 +31,7 @@ namespace DealerSetu.Controllers
             IFileValidationService fileValidationService
             )
         {
-            _newDealerService = newDealerService;
+            _tempService = tempService;
             _blobStorageService = blobStorageService;
             _jwtHelper = jwtHelper;
             _utility = utility;
@@ -75,12 +73,12 @@ namespace DealerSetu.Controllers
                     To = request.To
                 };
 
-                var result = await _newDealerService.NewDealerActivityListService(filter, (int)request.PageIndex, (int)request.PageSize);
+                var result = await _tempService.NewDealerActivityListService(filter, (int)request.PageIndex, (int)request.PageSize);
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError("NewDealerActivityController", "Error in NewDealerActivityApproved", ex);
+                _logger.LogError("TempController", "Error in NewDealerActivityApproved", ex);
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
@@ -122,12 +120,12 @@ namespace DealerSetu.Controllers
                     To = request.To
                 };
 
-                var result = await _newDealerService.NewDealerPendingListService(filter, request.PageIndex, request.PageSize);
+                var result = await _tempService.NewDealerPendingListService(filter, request.PageIndex, request.PageSize);
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError("NewDealerActivityController", "Error in NewDealerActivityPending", ex);
+                _logger.LogError("TempController", "Error in NewDealerActivityPending", ex);
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
@@ -147,12 +145,12 @@ namespace DealerSetu.Controllers
                 var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
                 var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
 
-                var result = await _newDealerService.DealerDataService(request.RequestNo);
+                var result = await _tempService.DealerDataService(request.RequestNo);
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError("NewDealerActivityController", "Error in GetDealerData", ex);
+                _logger.LogError("TempController", "Error in GetDealerData", ex);
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
@@ -169,12 +167,12 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                var response = await _newDealerService.DealerStatesService();
+                var response = await _tempService.DealerStatesService();
                 return Ok(response);
             }
             catch (Exception ex)
             {
-                _logger.LogError("NewDealerActivityController", "Error in DealerStates", ex);
+                _logger.LogError("TempController", "Error in DealerStates", ex);
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
@@ -238,7 +236,7 @@ namespace DealerSetu.Controllers
                 var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
                 var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
 
-                var result = await _newDealerService.SubmitClaimService(
+                var result = await _tempService.SubmitClaimService(
                     request.RequestNo,
                     request.DealerNo,
                     request.ActivityData,
@@ -249,7 +247,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError("NewDealerActivityController", "Error in SubmitClaim", ex);
+                _logger.LogError("TempController", "Error in SubmitClaim", ex);
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
@@ -312,7 +310,7 @@ namespace DealerSetu.Controllers
                 var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
                 var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
 
-                var result = await _newDealerService.UpdateClaimService(
+                var result = await _tempService.UpdateClaimService(
                     request.claimId,
                     request.ActivityData,
                     empNo
@@ -322,7 +320,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError("NewDealerActivityController", "Error in UpdateClaim", ex);
+                _logger.LogError("TempController", "Error in UpdateClaim", ex);
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
@@ -342,12 +340,12 @@ namespace DealerSetu.Controllers
                 var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
                 var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
 
-                var result = await _newDealerService.ClaimDetailsService(request.ClaimId);
+                var result = await _tempService.ClaimDetailsService(request.ClaimId);
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError("NewDealerActivityController", "Error in GetClaimDetails", ex);
+                _logger.LogError("TempController", "Error in GetClaimDetails", ex);
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
@@ -374,12 +372,12 @@ namespace DealerSetu.Controllers
                     IsApproved = request.IsApproved,
                     RejectRemarks = request.RejectRemarks
                 };
-                var result = await _newDealerService.ApproveRejectClaimService(filter);
+                var result = await _tempService.ApproveRejectClaimService(filter);
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError("NewDealerActivityController", "Error in ApproveRejectClaim", ex);
+                _logger.LogError("TempController", "Error in ApproveRejectClaim", ex);
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
@@ -512,12 +510,12 @@ namespace DealerSetu.Controllers
                     model.Image3 = await _blobStorageService.UploadFileAsync(request.Image3);
                 }
 
-                var result = await _newDealerService.AddActualClaimService(model);
+                var result = await _tempService.AddActualClaimService(model);
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError("NewDealerActivityController", "Error in AddUpdateClaim", ex);
+                _logger.LogError("TempController", "Error in AddUpdateClaim", ex);
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
@@ -629,12 +627,12 @@ namespace DealerSetu.Controllers
                     model.Image3 = await _blobStorageService.UploadFileAsync(request.Image3);
                 }
 
-                var result = await _newDealerService.UpdateActualClaimService(model);
+                var result = await _tempService.UpdateActualClaimService(model);
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError("NewDealerActivityController", "Error in UpdateActualClaim", ex);
+                _logger.LogError("TempController", "Error in UpdateActualClaim", ex);
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
@@ -653,12 +651,12 @@ namespace DealerSetu.Controllers
             {
                 var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
                 var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
-                var result = await _newDealerService.ActualClaimDetailsService(request.ActivityId);
+                var result = await _tempService.ActualClaimDetailsService(request.ActivityId);
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError("NewDealerActivityController", "Error in GetActualClaimDetails", ex);
+                _logger.LogError("TempController", "Error in GetActualClaimDetails", ex);
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
@@ -685,12 +683,12 @@ namespace DealerSetu.Controllers
                     ClaimId = request.ClaimId
                 };
 
-                var result = await _newDealerService.ActualClaimListService(filter);
+                var result = await _tempService.ActualClaimListService(filter);
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError("NewDealerActivityController", "Error in GetActualClaimList", ex);
+                _logger.LogError("TempController", "Error in GetActualClaimList", ex);
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
@@ -719,12 +717,12 @@ namespace DealerSetu.Controllers
                     RejectRemarks = request.RejectRemarks
                 };
 
-                var result = await _newDealerService.ApproveRejectActualClaimService(filter);
+                var result = await _tempService.ApproveRejectActualClaimService(filter);
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError("NewDealerActivityController", "Error in ApproveRejectActualClaim", ex);
+                _logger.LogError("TempController", "Error in ApproveRejectActualClaim", ex);
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
@@ -743,12 +741,12 @@ namespace DealerSetu.Controllers
             {
                 var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
                 var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
-                var result = await _newDealerService.AddActualRemarksService(request.ClaimId, request.ActualRemarks);
+                var result = await _tempService.AddActualRemarksService(request.ClaimId, request.ActualRemarks);
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError("NewDealerActivityController", "Error in AddActualRemarks", ex);
+                _logger.LogError("TempController", "Error in AddActualRemarks", ex);
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,

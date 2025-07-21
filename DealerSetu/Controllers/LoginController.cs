@@ -89,10 +89,10 @@ namespace DealerSetu.Controllers
                     //************************************RECAPTHA CHECK************************************
                     //*******************************COMMENTED FOR LOCAL USE********************************
 
-                    //if (!await _recaptchaService.VerifyAsync(payload.reCaptcha))
-                    //{
-                    //    return Ok(new { Message = "reCAPTCHA Verification Failed.", Status = 500 });
-                    //}
+                    if (!await _recaptchaService.VerifyAsync(payload.reCaptcha))
+                    {
+                        return Ok(new { Message = "reCAPTCHA Verification Failed.", Status = 500 });
+                    }
 
                     var result = await _loginService.Login_Service(loginModel); // Local
                     //var result = await _loginService.LDAPLoginService(loginModel); // LDAP

@@ -4,8 +4,6 @@ using System.Linq;
 using System.Security.Claims;
 using Microsoft.Extensions.Configuration;
 using System.IdentityModel.Tokens.Jwt;
-
-
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.IdentityModel.Tokens;
@@ -20,7 +18,6 @@ namespace DealerSetu_Data.Common
             try
             {
                 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:Key"]));
-
                 var claims = new[]
                 {
                  new Claim(JwtRegisteredClaimNames.NameId, user.EmpNo.ToString()),  // Use NameId or custom UserId
@@ -28,11 +25,10 @@ namespace DealerSetu_Data.Common
                  new Claim(JwtRegisteredClaimNames.Iat, new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
                  new Claim("UserId", user.UserId.ToString(), ClaimValueTypes.Integer),
                  new Claim("RoleId", user.RoleId.ToString()),  // Optional custom claim
-                 new Claim("Role", user.Role.ToString()),  // Optional custom claim
-
+                 new Claim(ClaimTypes.Role, user.Role.ToString()),  // Standard role claim for authorization
+                 new Claim("Role", user.Role.ToString()),  // Keep custom role claim for backward compatibility
                  new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),  // Unique token ID
                 };
-
                 var jwt = new JwtSecurityToken(
                     issuer: configuration["Jwt:Issuer"],
                     audience: configuration["Jwt:Audience"],
@@ -40,7 +36,6 @@ namespace DealerSetu_Data.Common
                     notBefore: DateTime.UtcNow,
                     expires: DateTime.UtcNow.AddMinutes(30),  // Token expiration time
                     signingCredentials: new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256));
-
                 return new JwtSecurityTokenHandler().WriteToken(jwt);
             }
             catch (Exception ex)

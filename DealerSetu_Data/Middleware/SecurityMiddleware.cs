@@ -1,29 +1,27 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Web;
 
 public class SecurityMiddleware
 {
     private readonly RequestDelegate _next;
+    private readonly ILogger<SecurityMiddleware> _logger;
     private readonly string[] _allowedHosts;
-    private readonly string[] _allowedContentTypes;
+    private readonly ConcurrentDictionary<string, List<DateTime>> _requestLog = new();
+    private readonly int _maxRequestsPerMinute = 100;
+    private readonly int _maxInputLength = 10000;
 
-    public SecurityMiddleware(RequestDelegate next, IConfiguration configuration)
+    public SecurityMiddleware(RequestDelegate next, IConfiguration configuration, ILogger<SecurityMiddleware> logger)
     {
         _next = next;
+        _logger = logger;
         _allowedHosts = configuration.GetSection("AllowedHosts").Get<string[]>() ?? Array.Empty<string>();
-        _allowedContentTypes = new[] {
-            "application/json",
-            "multipart/form-data",
-            "application/x-www-form-urlencoded",
-            // Excel file types
-            "application/vnd.ms-excel",                     // .xls
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  // .xlsx
-            "application/vnd.ms-excel.sheet.macroEnabled.12",  // .xlsm
-            "application/vnd.ms-excel.sheet.binary.macroEnabled.12",  // .xlsb
-            "text/csv"  // .csv files
-        };
 
         if (_allowedHosts.Length == 0)
         {
@@ -33,58 +31,105 @@ public class SecurityMiddleware
 
     public async Task Invoke(HttpContext context)
     {
-        // 1. Host Header Validation
-        var requestHost = context.Request.Host.Value.ToLower();
-        if (!_allowedHosts.Contains(requestHost))
+        try
         {
-            context.Response.StatusCode = StatusCodes.Status403Forbidden;
-            await context.Response.WriteAsync("Invalid Host Header");
-            return;
-        }
+            var clientIp = GetClientIpAddress(context);
 
-        // 2. XSS Protection
-        if (IsXssAttempt(context))
+            // 1. Dynamic Rate Limiting (application-level)
+            if (IsRateLimited(clientIp))
+            {
+                LogSecurityEvent("RateLimit", $"Rate limit exceeded for IP: {clientIp}", context);
+                context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                await context.Response.WriteAsync("Too Many Requests");
+                return;
+            }
+
+            // 2. Host Header Validation (business logic)
+            if (!IsValidHost(context))
+            {
+                LogSecurityEvent("InvalidHost", $"Invalid host header: {context.Request.Host.Value}", context);
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                await context.Response.WriteAsync("Forbidden");
+                return;
+            }
+
+            // 3. Advanced XSS Protection (content analysis)
+            if (IsXssAttempt(context))
+            {
+                LogSecurityEvent("XSSAttempt", "Potential XSS attack detected", context);
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await context.Response.WriteAsync("Bad Request");
+                return;
+            }
+
+            // 4. Form Input Validation (business logic)
+            if (!ValidateFormInputs(context))
+            {
+                LogSecurityEvent("InvalidInput", "Form input validation failed", context);
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await context.Response.WriteAsync("Bad Request");
+                return;
+            }
+
+            // 5. Add dynamic security headers
+            AddDynamicSecurityHeaders(context);
+
+            await _next(context);
+        }
+        catch (Exception ex)
         {
-            context.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await context.Response.WriteAsync("Potential XSS Attack Detected");
-            return;
+            _logger.LogError(ex, "Security middleware error");
+            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+            await context.Response.WriteAsync("Internal Server Error");
         }
-
-        // 3. Content Type Validation for all endpoints
-        //if (!ValidateContentType(context))
-        //{
-        //    context.Response.StatusCode = StatusCodes.Status415UnsupportedMediaType;
-        //    await context.Response.WriteAsync("Invalid Content Type");
-        //    return;
-        //}
-
-        // 4. Security Headers
-        AddSecurityHeaders(context);
-
-        await _next(context);
     }
 
-    private bool IsXssAttempt(HttpContext context)
+    private string GetClientIpAddress(HttpContext context)
     {
-        // Skip XSS check for file uploads
-        if (context.Request.HasFormContentType &&
-            context.Request.Form.Files.Any())
+        var forwardedFor = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(forwardedFor))
         {
-            return false;
+            return forwardedFor.Split(',')[0].Trim();
         }
 
-        // Check query string
-        if (context.Request.QueryString.HasValue)
+        var realIp = context.Request.Headers["X-Real-IP"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(realIp))
         {
-            var query = context.Request.QueryString.Value.ToLower();
-            if (ContainsSuspiciousContent(query)) return true;
+            return realIp;
         }
 
-        // Check request path
-        var path = context.Request.Path.Value?.ToLower();
-        if (path != null && ContainsSuspiciousContent(path)) return true;
+        return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    }
 
-        // Check form data
+    private bool IsRateLimited(string clientIp)
+    {
+        var now = DateTime.UtcNow;
+        var requests = _requestLog.GetOrAdd(clientIp, _ => new List<DateTime>());
+
+        lock (requests)
+        {
+            requests.RemoveAll(r => (now - r).TotalMinutes > 1);
+
+            if (requests.Count >= _maxRequestsPerMinute)
+            {
+                return true;
+            }
+
+            requests.Add(now);
+        }
+
+        return false;
+    }
+
+    private bool IsValidHost(HttpContext context)
+    {
+        var requestHost = context.Request.Host.Value.ToLower();
+        return _allowedHosts.Contains(requestHost);
+    }
+
+    private bool ValidateFormInputs(HttpContext context)
+    {
+        // Only validate form inputs, not query strings (handled by web.config)
         if (context.Request.HasFormContentType)
         {
             try
@@ -92,10 +137,62 @@ public class SecurityMiddleware
                 var form = context.Request.Form;
                 foreach (var key in form.Keys)
                 {
+                    // Key length validation
+                    if (key.Length > 100) return false;
+
                     var values = form[key];
                     foreach (var value in values)
                     {
-                        if (ContainsSuspiciousContent(value)) return true;
+                        // Value length validation
+                        if (value.Length > _maxInputLength) return false;
+
+                        // Business-specific validation
+                        if (ContainsBusinessSpecificThreats(value)) return false;
+                    }
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool IsXssAttempt(HttpContext context)
+    {
+        // Skip file uploads
+        if (context.Request.HasFormContentType && context.Request.Form.Files.Any())
+        {
+            return false;
+        }
+
+        // Check query string for XSS (more detailed than web.config)
+        if (context.Request.QueryString.HasValue)
+        {
+            var query = context.Request.QueryString.Value;
+            if (ContainsAdvancedXssPatterns(query)) return true;
+        }
+
+        // Check path for XSS
+        var path = context.Request.Path.Value;
+        if (path != null && ContainsAdvancedXssPatterns(path)) return true;
+
+        // Check form values for XSS
+        if (context.Request.HasFormContentType)
+        {
+            try
+            {
+                var form = context.Request.Form;
+                foreach (var key in form.Keys)
+                {
+                    if (ContainsAdvancedXssPatterns(key)) return true;
+
+                    var values = form[key];
+                    foreach (var value in values)
+                    {
+                        if (ContainsAdvancedXssPatterns(value)) return true;
                     }
                 }
             }
@@ -108,87 +205,130 @@ public class SecurityMiddleware
         return false;
     }
 
-    private bool ContainsSuspiciousContent(string content)
+    private bool ContainsAdvancedXssPatterns(string content)
     {
-        string[] suspicious = new[] {
-            "<script",
-            "javascript:",
-            "data:",
-            "vbscript:",
-            "onerror=",
-            "onload=",
-            "onmouseover=",
-            "onfocus=",
-            "onblur=",
-            "eval(",
-            "document.cookie",
-            "document.write",
-            "innerHTML",
-            "fromCharCode",
-            "<!--",
-            "-->",
-            "<iframe",
-            "<object",
-            "<embed"
-        };
-        return suspicious.Any(x => content.Contains(x));
-    }
+        if (string.IsNullOrEmpty(content)) return false;
 
-    private bool ValidateContentType(HttpContext context)
-    {
-        if (context.Request.Method == "GET" || context.Request.Method == "DELETE")
-            return true;
-
-        // For multipart form data, check individual file content types
-        if (context.Request.HasFormContentType &&
-            context.Request.Form.Files.Any())
+        string decoded;
+        try
         {
-            return context.Request.Form.Files.All(file =>
-                _allowedContentTypes.Any(allowed =>
-                    file.ContentType.ToLower().Contains(allowed)));
+            decoded = HttpUtility.UrlDecode(content).ToLower();
+        }
+        catch
+        {
+            return true;
         }
 
-        var contentType = context.Request.ContentType?.ToLower() ?? "";
-        return _allowedContentTypes.Any(allowed => contentType.Contains(allowed));
+        // Advanced XSS patterns (more sophisticated than basic filtering)
+        string[] advancedXssPatterns = new[] {
+            "<script", "</script>", "javascript:", "data:text/html", "data:application/javascript", "vbscript:",
+            "onerror=", "onload=", "onmouseover=", "onfocus=", "onblur=", "onclick=", "onmouseout=", "onkeydown=",
+            "onkeyup=", "onkeypress=", "onchange=", "onsubmit=", "eval(", "settimeout(", "setinterval(", "function(",
+            "alert(", "confirm(", "prompt(", "document.cookie", "document.write", "document.writeln", "innerhtml",
+            "outerhtml", "document.location", "window.location", "location.href", "location.replace", "location.assign",
+            "fromcharcode", "string.fromcharcode", "expression(", "behavior:", "binding:", "import",
+            "phNjcmlwdd4=", "c2NyaXB0", "amf2yxnjcmlwda==", // Base64 encoded script tags
+            "&#x", "&#", "&lt;script", "&gt;", // HTML entity encoding
+            "\\u0073\\u0063\\u0072\\u0069\\u0070\\u0074", // Unicode encoding
+            "src=data:", "href=data:", "action=data:", // Data URI schemes
+            "style=", "background:", "background-image:", // CSS injection
+            "expression\\(", "url\\(", "import\\(", // CSS expression attacks
+        };
+
+        return advancedXssPatterns.Any(pattern => decoded.Contains(pattern));
     }
 
-    private void AddSecurityHeaders(HttpContext context)
+    private bool ContainsBusinessSpecificThreats(string content)
+    {
+        if (string.IsNullOrEmpty(content)) return false;
+
+        string decoded;
+        try
+        {
+            decoded = HttpUtility.UrlDecode(content).ToLower();
+        }
+        catch
+        {
+            return true;
+        }
+
+        // Business-specific security patterns
+        string[] businessThreats = new[] {
+            "union select", "drop table", "insert into", "delete from", "update set", // SQL injection
+            "<?php", "<?=", "system(", "exec(", "passthru(", "shell_exec(", // Code injection
+            "/etc/passwd", "\\windows\\", "c:\\", "cmd.exe", "powershell", "/bin/bash", "/bin/sh", // Path traversal
+            "whoami", "net user", "objectclass=", "objectcategory=", // System commands
+            "<!entity", "<!doctype", "<!--#", // XXE attacks
+        };
+
+        return businessThreats.Any(threat => decoded.Contains(threat));
+    }
+
+    private void AddDynamicSecurityHeaders(HttpContext context)
     {
         var headers = context.Response.Headers;
 
-        context.Response.Headers.Remove("X-Powered-By");
-        context.Response.Headers.Remove("Server");
-        context.Request.Headers.Remove("Server");
-        context.Response.Headers.Remove("X-AspNet-Version");
-        context.Response.Headers.Remove("X-AspNetMvc-Version");
-
-        // Security headers for all endpoints
+        // Only add headers that need to be dynamic or calculated
         headers["X-Content-Type-Options"] = "nosniff";
         headers["X-Frame-Options"] = "SAMEORIGIN";
         headers["X-XSS-Protection"] = "1; mode=block";
-        headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+        headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload";
         headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
-        headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=(), payment=(), usb=(), vr=()";
-        //headers["Cross-Origin-Embedder-Policy"] = "require-corp";
-        //headers["Cross-Origin-Opener-Policy"] = "same-origin";
-        //headers["Cross-Origin-Resource-Policy"] = "same-origin";
-        //headers["Clear-Site-Data"] = "cache, cookies, storage, executionContexts";
+        headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=(), payment=(), usb=(), vr=(), accelerometer=(), gyroscope=(), magnetometer=()";
         headers["X-Permitted-Cross-Domain-Policies"] = "none";
-        headers["Cache-Control"] = "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
 
-        // CSP header adjusted to allow file downloads
-        //headers["Content-Security-Policy"] =
-        //    "default-src 'self'; " +
-        //    "script-src 'self'; " +
-        //    "style-src 'self'; " +
-        //    "img-src 'self' data:; " +
-        //    "font-src 'self'; " +
-        //    "object-src 'none'; " +
-        //    "frame-ancestors 'self' https://swdsetu.m-devsecops.com; " +
-        //    "form-action 'self'; " +
-        //    "base-uri 'self'; " +
-        //    "download-src 'self';";
+        // Dynamic cache control based on content type or path
+        if (context.Request.Path.Value?.Contains("/api/") == true)
+        {
+            headers["Cache-Control"] = "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
+            headers["Pragma"] = "no-cache";
+            headers["Expires"] = "0";
+        }
 
+        // Dynamic CSP based on request context
+        var csp = BuildDynamicContentSecurityPolicy(context);
+        headers["Content-Security-Policy"] = csp;
 
+        // Add request-specific headers
+        headers["X-Request-ID"] = Guid.NewGuid().ToString();
+        headers["X-DNS-Prefetch-Control"] = "off";
+        headers["X-Download-Options"] = "noopen";
+    }
+
+    private string BuildDynamicContentSecurityPolicy(HttpContext context)
+    {
+        // Build CSP based on request context
+        var csp = "default-src 'self'; " +
+                 "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+                 "style-src 'self' 'unsafe-inline'; " +
+                 "img-src 'self' data: https: blob:; " +
+                 "connect-src 'self'; " +
+                 "font-src 'self'; " +
+                 "object-src 'none'; " +
+                 "media-src 'self'; " +
+                 "frame-src 'none'; " +
+                 "form-action 'self'; " +
+                 "base-uri 'self'; " +
+                 "frame-ancestors 'self';";
+
+        // Add dynamic CSP rules based on request path or user context
+        if (context.Request.Path.Value?.Contains("/admin/") == true)
+        {
+            csp += " upgrade-insecure-requests;";
+        }
+
+        return csp;
+    }
+
+    private void LogSecurityEvent(string eventType, string details, HttpContext context)
+    {
+        var clientIp = GetClientIpAddress(context);
+        var userAgent = context.Request.Headers["User-Agent"].ToString();
+        var requestPath = context.Request.Path;
+        var method = context.Request.Method;
+        var referer = context.Request.Headers["Referer"].ToString();
+
+        _logger.LogWarning("Security Event: {EventType} - {Details} - IP: {IpAddress} - Path: {RequestPath} - Method: {Method} - UserAgent: {UserAgent} - Referer: {Referer}",
+            eventType, details, clientIp, requestPath, method, userAgent, referer);
     }
 }

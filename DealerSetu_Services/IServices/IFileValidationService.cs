@@ -25,7 +25,7 @@ namespace DealerSetu_Services.IServices
         bool IsAlphanumericWithSpace(string input);
         bool ValidateImageFile(IFormFile file);
         //Task<ServiceResponse> ScanFileWithDefenderAsync(IFormFile file);
-        Task<ServiceResponse> ValidateImageAsync(IFormFile imageFile, long maxFileSize);
+        Task<ServiceResponse> ValidateImageAsync(IFormFile imageFile, long maxFileSize);        
     }
 
 }

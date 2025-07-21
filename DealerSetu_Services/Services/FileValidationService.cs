@@ -22,13 +22,10 @@ namespace DealerSetu_Services.Services
         private const long MinFileSizeBytes = 1 * 1024; // 1KB
         private static readonly HashSet<string> AllowedExtensions = new HashSet<string> { ".xlsx", ".xls" };
         private readonly Utility _utility;
-        // List of allowed image formats
         private static readonly string[] AllowedImageFormats = { "jpg", "jpeg", "png" };
-        // List of allowed video formats
         private static readonly string[] AllowedVideoFormats = { "mp4", "avi" };
 
-        // Lazy-loaded file signatures for content validation
-        private static readonly Lazy<Dictionary<string, List<byte[]>>> FileSignatureMap = new Lazy<Dictionary<string, List<byte[]>>>(() =>
+        private static readonly Lazy<Dictionary<string, List<byte[]>>> FileSignatureMap = new(() =>
             new Dictionary<string, List<byte[]>>(StringComparer.OrdinalIgnoreCase)
             {
                 { "application/pdf", new List<byte[]> { new byte[] { 0x25, 0x50, 0x44, 0x46 } } },
@@ -38,19 +35,10 @@ namespace DealerSetu_Services.Services
                 { "application/vnd.ms-excel", new List<byte[]> { new byte[] { 0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1 } } }
             });
 
-        // Precompiled regex patterns for performance
         private static readonly Regex EmailRegex = new Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.Compiled);
         private static readonly Regex ScriptTagRegex = new Regex(@"<script[^>]*>.*?</script>", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly Regex HarmfulCharsRegex = new Regex(@"[\\:*?""<>|]", RegexOptions.Compiled);
         private static readonly Regex AlphanumericWithSpaceRegex = new Regex(@"^[a-zA-Z0-9\s()./&]+$", RegexOptions.Compiled);
-        // Suspicious patterns for security checks
-        //private static readonly string[] SqlPatterns = {
-        //    "union select", "union all", "union distinct",
-        //    "order by", "group by", "having",
-        //    "@@","char(", "convert(", "cast(",
-        //    "declare", "exec(", "execute(",
-        //    "sp_", "xp_", "msdb.."
-        //};
 
         private static readonly string[] XssPatterns = {
             "onload=", "onerror=", "onmouseover=",
@@ -83,130 +71,10 @@ namespace DealerSetu_Services.Services
             "javascript:", "vbscript:", "<!entity"
         };
 
-
         public FileValidationService(Utility utility)
         {
             _utility = utility ?? throw new ArgumentNullException(nameof(utility));
         }
-
-        public async Task<ServiceResponse> ValidateFile(IFormFile file)
-        {
-            if (file == null)
-            {
-                return CreateErrorResponse("No file provided", "FILE_NULL", "No file was provided for validation");
-            }
-
-            try
-            {
-                // Basic validation
-                var basicValidation = ValidateBasicFileProperties(file);
-                if ((bool)basicValidation.isError) return basicValidation;
-
-                // File signature validation
-                if (!await ValidateFileSignatureAsync(file))
-                {
-                    return CreateErrorResponse("File content does not match its declared type",
-                        "INVALID_FILE_SIGNATURE", "The file content appears to be modified or corrupted");
-                }
-
-                // Content security validation
-                var contentSecurityResponse = await ValidateFileContentAsync(file);
-                if ((bool)contentSecurityResponse.isError) return contentSecurityResponse;
-
-                //HAVE TO ADD THIS AGAIN
-                //COMMENTED BEACUSE CLOUDMERSIVE DOES NOT WORK ON LOCAL
-                //****************************************************************************************************************
-                //// Excel-specific validation
-                //string extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-                //if (AllowedExtensions.Contains(extension))
-                //{
-                //    var excelValidation = await ValidateExcelStructureAsync(file);
-                //    if ((bool)excelValidation.isError) return excelValidation;
-
-                //    // Antivirus scan only for Excel files
-                //    return await ScanFileWithDefenderAsync(file);
-                //}
-
-                return CreateSuccessResponse(file);
-            }
-            catch (Exception ex)
-            {
-                return CreateExceptionResponse(ex);
-            }
-        }
-
-        //*********************************************VAPT SECURITY*****************************************************************
-
-        // Validate image file
-        public bool ValidateImageFile(IFormFile file)
-        {
-            return ValidateFile(file, AllowedImageFormats);
-        }
-
-        // Validate video file
-        public static bool ValidateVideoFile(IFormFile file)
-        {
-            return ValidateFile(file, AllowedVideoFormats);
-        }
-
-        // Generic file validation method
-        private static bool ValidateFile(IFormFile file, string[] allowedFormats)
-        {
-            if (file == null || string.IsNullOrEmpty(file.FileName))
-            {
-                return false;
-            }
-
-            // Get the requested file extension from the file name
-            string reqExtension = Path.GetExtension(file.FileName).TrimStart('.').ToLower();
-
-            // Get the actual file type using magic number
-            string evaluatedType = MagicNumberClass.MagicNumber(file);
-
-            // Split evaluatedType into an array if it contains multiple types (e.g., "docx/xlsx/pptx/zip")
-            string[] evaluatedTypes = evaluatedType.Split('/');
-
-            // Compare evaluated and requested extensions
-            bool isValidFileType = evaluatedTypes.Contains(reqExtension, StringComparer.OrdinalIgnoreCase) &&
-                                   allowedFormats.Contains(reqExtension, StringComparer.OrdinalIgnoreCase);
-
-            return isValidFileType;
-        }
-
-
-        //*****************************************************************************************************************************
-
-
-        //public async Task<ServiceResponse> ScanFileWithDefenderAsync(IFormFile file)
-        //{
-        //    var tempFilePath = Path.GetTempFileName();
-        //    try
-        //    {
-        //        using (var stream = new FileStream(tempFilePath, FileMode.Create))
-        //        {
-        //            await file.CopyToAsync(stream);
-        //        }
-
-        //        var scanResult = await ScanFileWithDefenderAsync(tempFilePath);
-        //        if (!scanResult.IsClean)
-        //        {
-        //            return CreateErrorResponse("Malicious file detected",
-        //                "MALICIOUS_FILE_DETECTED",
-        //                $"File is flagged as malicious by antivirus: {scanResult.Message}");
-        //        }
-
-        //        return CreateSuccessResponse(file);
-        //    }
-        //    finally
-        //    {
-        //        if (File.Exists(tempFilePath))
-        //        {
-        //            File.Delete(tempFilePath);
-        //        }
-        //    }
-        //}
-
-
 
         //HAVE TO ADD THIS AGAIN
         //COMMENTED BEACUSE CLOUDMERSIVE DOES NOT WORK ON LOCAL
@@ -254,14 +122,107 @@ namespace DealerSetu_Services.Services
         //            System.IO.File.Delete(tempFilePath);
         //        }
         //    }
+        //}     
+
+
+
+        //HAVE TO ADD THIS AGAIN
+        //COMMENTED BEACUSE CLOUDMERSIVE DOES NOT WORK ON LOCAL
+        //**************************************************************************************************
+        // Step 3: Check the Malicious Content
+        //try
+        //{
+        //    // Scan the file directly without conversion
+        //    var maliciousCheck = await ScanFileWithDefenderAsync(imageFile);
+        //    if ((bool)maliciousCheck.isError)
+        //    {
+        //        response.isError = true;
+        //        response.Message = "File is not Correct";
+        //        response.Code = "302";
+        //        response.Status = "Error";
+        //        return response;
+        //    }
+        //}
+        //catch (Exception ex)
+        //{
+        //    response.isError = true;
+        //    response.Message = "Invalid request. File Upload Limit Reached. Please try again later.";
+        //    response.Code = "310";
+        //    response.Status = "Error";
+        //    return response;
         //}
 
+
+
+        public async Task<ServiceResponse> ValidateFile(IFormFile file)
+        {
+            if (file == null)
+            {
+                return CreateErrorResponse("No file provided", "FILE_NULL", "No file was provided for validation");
+            }
+
+            try
+            {
+                var basicValidation = ValidateBasicFileProperties(file);
+                if ((bool)basicValidation.isError) return basicValidation;
+
+                if (!await ValidateFileSignatureAsync(file))
+                {
+                    return CreateErrorResponse("File content does not match its declared type",
+                        "INVALID_FILE_SIGNATURE", "The file content appears to be modified or corrupted");
+                }
+
+                var contentSecurityResponse = await ValidateFileContentAsync(file);
+                if ((bool)contentSecurityResponse.isError) return contentSecurityResponse;
+
+                string extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+                //if (AllowedExtensions.Contains(extension))
+                //{
+                //    var excelValidation = await ValidateExcelStructureAsync(file);
+                //    if ((bool)excelValidation.isError) return excelValidation;
+
+                //    return await ScanFileWithDefenderAsync(file);
+                //}
+
+                return CreateSuccessResponse(file);
+            }
+            catch (Exception ex)
+            {
+                return CreateExceptionResponse(ex);
+            }
+        }
+
+        public bool ValidateImageFile(IFormFile file)
+        {
+            return ValidateFile(file, AllowedImageFormats);
+        }
+
+        public static bool ValidateVideoFile(IFormFile file)
+        {
+            return ValidateFile(file, AllowedVideoFormats);
+        }
+
+        private static bool ValidateFile(IFormFile file, string[] allowedFormats)
+        {
+            if (file == null || string.IsNullOrEmpty(file.FileName))
+            {
+                return false;
+            }
+
+            string reqExtension = Path.GetExtension(file.FileName).TrimStart('.').ToLower();
+            string evaluatedType = MagicNumberClass.MagicNumber(file);
+            string[] evaluatedTypes = evaluatedType.Split('/');
+
+            bool isValidFileType = evaluatedTypes.Contains(reqExtension, StringComparer.OrdinalIgnoreCase) &&
+                                   allowedFormats.Contains(reqExtension, StringComparer.OrdinalIgnoreCase);
+
+            return isValidFileType;
+        }
 
         public async Task<ServiceResponse> ValidateImageAsync(IFormFile imageFile, long maxFileSize)
         {
             var response = new ServiceResponse();
 
-            // Step 1: Check File Size
             if (imageFile.Length > maxFileSize)
             {
                 response.isError = true;
@@ -271,7 +232,6 @@ namespace DealerSetu_Services.Services
                 return response;
             }
 
-            // Step 2: Check the actual type of the File using Magic Numbers
             if (!ValidateImageFile(imageFile))
             {
                 response.isError = true;
@@ -281,76 +241,10 @@ namespace DealerSetu_Services.Services
                 return response;
             }
 
-
-            //HAVE TO ADD THIS AGAIN
-            //COMMENTED BEACUSE CLOUDMERSIVE DOES NOT WORK ON LOCAL
-            //**************************************************************************************************
-            // Step 3: Check the Malicious Content
-            //try
-            //{
-            //    // Scan the file directly without conversion
-            //    var maliciousCheck = await ScanFileWithDefenderAsync(imageFile);
-            //    if ((bool)maliciousCheck.isError)
-            //    {
-            //        response.isError = true;
-            //        response.Message = "File is not Correct";
-            //        response.Code = "302";
-            //        response.Status = "Error";
-            //        return response;
-            //    }
-            //}
-            //catch (Exception ex)
-            //{
-            //    response.isError = true;
-            //    response.Message = "Invalid request. File Upload Limit Reached. Please try again later.";
-            //    response.Code = "310";
-            //    response.Status = "Error";
-            //    return response;
-            //}
-
-            // If all validations pass
             response.isError = false;
             response.Status = "Success";
             response.Message = "File validation successful";
             return response;
-        }
-
-        private async Task<DefenderScanResult> ScanFileWithDefenderAsync(string filePath)
-        {
-            var result = new DefenderScanResult();
-            string command = $@"Start-MpScan -ScanType QuickScan -File '{filePath}'";
-
-            try
-            {
-                var processStartInfo = new ProcessStartInfo
-                {
-                    FileName = "powershell.exe",
-                    Arguments = $"-NoProfile -Command \"{command}\"",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-
-                using var process = new Process { StartInfo = processStartInfo };
-                process.Start();
-
-                // Read output asynchronously
-                var outputTask = process.StandardOutput.ReadToEndAsync();
-                var errorTask = process.StandardError.ReadToEndAsync();
-
-                await Task.WhenAll(outputTask, process.WaitForExitAsync());
-
-                result.InfectedFiles = await outputTask;
-                result.Message = !string.IsNullOrEmpty(await errorTask) ? $"Error: {await errorTask}" : result.InfectedFiles;
-                result.IsClean = !result.Message.Contains("Threat found", StringComparison.OrdinalIgnoreCase);
-            }
-            catch (Exception ex)
-            {
-                result.Message = $"An error occurred during the Defender scan: {ex.Message}";
-            }
-
-            return result;
         }
 
         public async Task<ServiceResponse> ValidateEmployeeExcel(IFormFile file)
@@ -392,7 +286,7 @@ namespace DealerSetu_Services.Services
                 }
 
                 var dataTable = result.Tables[0];
-                if (dataTable.Rows.Count < 2) // Header + at least one data row
+                if (dataTable.Rows.Count < 2)
                 {
                     return CreateErrorResponse("Excel file is empty", "NO_DATA", "The Excel file contains no data rows");
                 }
@@ -401,7 +295,6 @@ namespace DealerSetu_Services.Services
                 var headerValidation = ValidateHeaders(headers, requiredColumns);
                 if ((bool)headerValidation.isError) return headerValidation;
 
-                // Validate each data row
                 for (int rowIndex = 1; rowIndex < dataTable.Rows.Count; rowIndex++)
                 {
                     var rowValidation = rowValidator(dataTable.Rows[rowIndex], rowIndex + 1, headers, requiredColumns);
@@ -428,7 +321,6 @@ namespace DealerSetu_Services.Services
 
         private ServiceResponse ValidateEmployeeDataRow(DataRow row, int rowNumber, List<string> headers, Dictionary<string, bool> requiredColumns)
         {
-            // Check required fields first for early exit
             var requiredFields = new[] { "EmpNo", "Name", "Email" };
             foreach (var field in requiredFields)
             {
@@ -439,7 +331,6 @@ namespace DealerSetu_Services.Services
                 }
             }
 
-            // Validate all columns except Email
             for (int i = 0; i < headers.Count; i++)
             {
                 var columnName = headers[i];
@@ -454,7 +345,6 @@ namespace DealerSetu_Services.Services
                 }
             }
 
-            // Validate email format
             var emailIndex = headers.IndexOf("Email");
             if (emailIndex >= 0)
             {
@@ -481,7 +371,6 @@ namespace DealerSetu_Services.Services
                 }
             }
 
-            // Validate all columns except Email
             for (int i = 0; i < headers.Count; i++)
             {
                 var columnName = headers[i];
@@ -496,7 +385,6 @@ namespace DealerSetu_Services.Services
                 }
             }
 
-            // Validate email format
             var emailIndex = headers.IndexOf("Email");
             if (emailIndex >= 0)
             {
@@ -555,7 +443,6 @@ namespace DealerSetu_Services.Services
 
         private ServiceResponse ValidateHeaders(List<string> headers, Dictionary<string, bool> requiredColumns)
         {
-            // Check for missing required columns
             var missingRequired = requiredColumns
                 .Where(rc => rc.Value)
                 .Where(rc => !headers.Contains(rc.Key, StringComparer.OrdinalIgnoreCase))
@@ -707,8 +594,6 @@ namespace DealerSetu_Services.Services
         public bool ContainsMaliciousPatterns(string content)
         {
             var normalizedContent = content.ToLowerInvariant();
-
-            // Check for patterns in parallel for better performance
             return CheckPatterns(normalizedContent, XssPatterns) ||
                    CheckPatterns(normalizedContent, ScriptPatterns) ||
                    CheckPatterns(normalizedContent, CommandPatterns);
@@ -730,7 +615,7 @@ namespace DealerSetu_Services.Services
         {
             if (string.IsNullOrEmpty(input))
                 return input;
-            
+
             var sanitizedInput = HarmfulCharsRegex.Replace(input, "");
             sanitizedInput = ScriptTagRegex.Replace(input, "");
 
@@ -744,7 +629,6 @@ namespace DealerSetu_Services.Services
 
             email = email.Trim();
 
-            // Only sanitize if it's valid
             if (_utility.IsValidEmail(email))
             {
                 return HttpUtility.HtmlEncode(email);
@@ -773,18 +657,14 @@ namespace DealerSetu_Services.Services
             return false;
         }
 
-
         public bool IsAlphanumericWithSpace(string input)
         {
             if (string.IsNullOrWhiteSpace(input))
                 return false;
-            string decoded = WebUtility.HtmlDecode(input); // Becomes: "M/S KISAN TRACTORS & MOTORS"
-
-            // Regex: Allows letters (a-z, A-Z), numbers (0-9), and spaces
+            string decoded = WebUtility.HtmlDecode(input);
             return Regex.IsMatch(decoded, @"^[a-zA-Z0-9\s()./&-]+$");
-        }       
+        }
 
-        // Helper methods to create consistent responses
         private ServiceResponse CreateErrorResponse(string error, string code, string message)
         {
             return new ServiceResponse

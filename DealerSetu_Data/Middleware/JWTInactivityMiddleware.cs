@@ -27,6 +27,11 @@ namespace DealerSetu_Data.Middleware
 {
     "/Login/LoginUser",
     "/api/Login/LoginUser",
+    "/swagger",
+    "/swagger/index.html",
+    "/swagger/v1/swagger.json",
+    "/health",
+    "/Login/init-csrf",
 };
 
         // Paths to skip inactivity checks (e.g., Heartbeat API)
@@ -36,6 +41,18 @@ namespace DealerSetu_Data.Middleware
     "/api/Login/LoginHeartBeat",
     "/swagger",
     "/health",
+    "/Login/init-csrf",
+};
+
+        private readonly HashSet<string> _excludedAntiforgeryPaths = new(StringComparer.OrdinalIgnoreCase)
+{
+    "/Login/LoginUser",
+    "/api/Login/LoginUser",
+    "/Login/LoginHeartBeat",
+    "/api/Login/LoginHeartBeat",
+    "/swagger",
+    "/health",
+    "/Login/init-csrf",
 };
 
 
@@ -60,6 +77,12 @@ namespace DealerSetu_Data.Middleware
             {
                 throw new InvalidOperationException("JWT secret key is not set. Check appsettings.json.");
             }
+        }
+
+        private bool ShouldSkipAntiforgeryValidation(string path)
+        {
+            return _excludedAntiforgeryPaths.Any(excludedPath =>
+                path.StartsWith(excludedPath, StringComparison.OrdinalIgnoreCase));
         }
 
         public async Task InvokeAsync(HttpContext context)

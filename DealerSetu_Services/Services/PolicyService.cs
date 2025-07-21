@@ -99,7 +99,7 @@ namespace dealersetu_services.services
         /// <param name="request">Policy upload request containing file and metadata</param>
         /// <param name="RAId">Related Agreement ID</param>
         /// <returns>ServiceResponse indicating success or failure of the upload operation</returns>
-        public async Task<ServiceResponse> SendFiletoServerService(PolicyUploadModel request)
+        public async Task<ServiceResponse> SendFiletoServerService(FileUploadModel request)
         {
             var response = new ServiceResponse();
 
@@ -163,6 +163,101 @@ namespace dealersetu_services.services
 
                 // Save to database
                 var result = _policyRepository.SendFilesToServerRepo(request,updatedFileName);
+
+                response.Status = "Success";
+                response.Code = "200";
+                response.Message = "File uploaded successfully";
+                response.result = new { BlobUrl = blobUrl, FileName = updatedFileName };
+            }
+            catch (ArgumentException ex)
+            {
+                response.Status = "Failure";
+                response.Code = "400";
+                response.Error = $"Invalid argument: {ex.Message}";
+                response.isError = true;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                response.Status = "Failure";
+                response.Code = "401";
+                response.Error = "Unauthorized access to storage";
+                response.isError = true;
+            }
+            catch (Exception ex)
+            {
+                response.Status = "Failure";
+                response.Code = "500";
+                response.Error = $"Upload failed: {ex.Message}";
+                response.isError = true;
+            }
+
+            return response;
+        }
+
+        public async Task<ServiceResponse> SendPolicytoServerService(PolicyUploadModel request)
+        {
+            var response = new ServiceResponse();
+
+            // Validate input parameters
+            if (request?.FileName == null)
+            {
+                response.Status = "Failure";
+                response.Code = "400";
+                response.Error = "File is required";
+                response.isError = true;
+                return response;
+            }
+
+            try
+            {
+                //// Validate file size
+                //if (request.FileName.Length > MAX_FILE_SIZE_BYTES)
+                //{
+                //    response.Status = "Failure";
+                //    response.Code = "400";
+                //    response.Error = $"File size exceeds the maximum allowed size of {MAX_FILE_SIZE_BYTES / (1024 * 1024)} MB";
+                //    response.isError = true;
+                //    return response;
+                //}
+
+                //// Validate file extension and type
+                //var fileExtension = Path.GetExtension(request.FileName.FileName);
+                //if (string.IsNullOrWhiteSpace(fileExtension))
+                //{
+                //    response.Status = "Failure";
+                //    response.Code = "400";
+                //    response.Error = "File must have a valid extension";
+                //    response.isError = true;
+                //    return response;
+                //}
+
+                //var magicNumberType = MagicNumberClass.MagicNumber(request.FileName);
+
+                //if (string.IsNullOrEmpty(magicNumberType) || !VALID_EXTENSIONS.Contains(fileExtension.ToLowerInvariant()))
+                //{
+                //    response.Status = "Failure";
+                //    response.Code = "400";
+                //    response.Error = "Invalid file type. Allowed types: " + VALID_EXTENSIONS.Replace("|", ", ");
+                //    response.isError = true;
+                //    return response;
+                //}
+
+                // Generate unique filename
+                var updatedFileName = GenerateUniqueFileName(request.FileName.FileName);
+
+                // Upload to Azure Blob Storage
+                var blobUrl = await AddDocs(request.FileName, updatedFileName);
+                if (string.IsNullOrWhiteSpace(blobUrl))
+                {
+                    response.Status = "Failure";
+                    response.Code = "500";
+                    response.Error = "Failed to upload file to storage";
+                    response.isError = true;
+                    return response;
+                }
+
+                // Save to database
+                var result = _policyRepository.SendPolicyToServerRepo(request, updatedFileName);
 
                 response.Status = "Success";
                 response.Code = "200";

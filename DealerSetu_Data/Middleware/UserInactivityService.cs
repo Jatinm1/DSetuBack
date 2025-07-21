@@ -37,7 +37,7 @@ public class UserInactivityService : BackgroundService
             catch (Exception ex)
             {
                 // Log the error properly (if you have a logging service, use that)
-                Console.WriteLine($"[Error] {ex.Message}");
+                //Console.WriteLine($"[Error] {ex.Message}");
                 await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken); // Back off on error
             }
         }

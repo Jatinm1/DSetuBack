@@ -2,12 +2,14 @@
 using DealerSetu_Data.Models.RequestModels;
 using DealerSetu_Data.Models.ViewModels;
 using DealerSetu_Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DealerSetu.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Policy = "PerformanceAccess")]
     public class PerformanceSheetController : ControllerBase
     {
         private readonly IPerformanceSheetService _performanceSheetService;

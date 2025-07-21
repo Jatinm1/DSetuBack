@@ -3,9 +3,11 @@ using DealerSetu_Data.Models;
 using DealerSetu_Data.Models.HelperModels;
 using dealersetu_services.services;
 using DealerSetu_Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 namespace DealerSetu.Controllers
 {
+    [Authorize(Roles = "Dealer,TM,CCM,CM,SH,HO,AM")]
     public class PolicyController : Controller
     {
         private IPolicyService _policyService;
@@ -42,7 +44,23 @@ namespace DealerSetu.Controllers
         }
 
         [HttpPost("UploadPolicyPdf")]
-        public async Task<IActionResult> SendFiletoServer([FromForm] PolicyUploadModel model)
+        public async Task<IActionResult> SendPolicytoServer([FromForm] PolicyUploadModel model)
+        {
+            try
+            {
+                // Call the service to handle file upload
+                var result = await _policyService.SendPolicytoServerService(model);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("PolicyController", "Error in UploadPolicyPdf", ex);
+                return StatusCode(500, new { error = "An error occurred while uploading the policy PDF.", details = ex.Message });
+            }
+        }
+
+        [HttpPost("UploadFiles")]
+        public async Task<IActionResult> SendFilestoServer([FromForm] FileUploadModel model)
         {
             try
             {
@@ -98,7 +116,7 @@ namespace DealerSetu.Controllers
 }
 //*************************************Add this Method above to Upload New Polices*************************************
 //[HttpPost("UploadPolicyPdf")]
-//public async Task<IActionResult> SendFiletoServer([FromForm] PolicyUploadModel model, int RAId)
+//public async Task<IActionResult> SendFiletoServer([FromForm] FileUploadModel model, int RAId)
 //{
 //    // Call the service to handle file upload
 //    var result = await _policyService.SendFiletoServerService(model, RAId);

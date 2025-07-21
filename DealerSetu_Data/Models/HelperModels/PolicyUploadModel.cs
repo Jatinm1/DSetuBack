@@ -11,7 +11,6 @@ namespace DealerSetu_Data.Models.HelperModels
     public class PolicyUploadModel
     {
         public IFormFile? FileName { get; set; }
-        //[AlphaNumeric]
-        //public string? UpdatedName { get; set; }
+        public string? PolicyName { get; set; }
     }
 }

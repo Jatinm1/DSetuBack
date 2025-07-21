@@ -4,12 +4,14 @@ using DealerSetu_Data.Models.HelperModels;
 using DealerSetu_Data.Models.RequestModels;
 using DealerSetu_Data.Models.ViewModels;
 using DealerSetu_Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DealerSetu.Controllers
 {
     [ApiController]
     [Route("[controller]")]
+    [Authorize(Policy = "DemoTractorAccess")]
     public class DemoRequestController : ControllerBase
     {
         private readonly IDemoRequestService _demoService;
@@ -57,7 +59,7 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in DemoTractorApproved");
-                _fileLogger.LogError("DemoRequestController", "Error in DemoTractorApproved", ex);
+                //_fileLogger.LogError("DemoRequestController", "Error in DemoTractorApproved", ex);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request.");
             }
         }
@@ -80,7 +82,7 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in DemoTractorPending");
-                _fileLogger.LogError("DemoRequestController", "Error in DemoTractorPending", ex);
+                //_fileLogger.LogError("DemoRequestController", "Error in DemoTractorPending", ex);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request.");
             }
         }
@@ -103,7 +105,7 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in DemoTractorPendingClaim");
-                _fileLogger.LogError("DemoRequestController", "Error in DemoTractorPendingClaim", ex);
+                //_fileLogger.LogError("DemoRequestController", "Error in DemoTractorPendingClaim", ex);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request.");
             }
         }
@@ -125,7 +127,7 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in GetFiscalYears");
-                _fileLogger.LogError("DemoRequestController", "Error in GetFiscalYears", ex);
+                //_fileLogger.LogError("DemoRequestController", "Error in GetFiscalYears", ex);
                 return StatusCode(StatusCodes.Status500InternalServerError, new ServiceResponse
                 {
                     isError = true,
@@ -165,7 +167,7 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in SubmitDemoRequest");
-                _fileLogger.LogError("DemoRequestController", "Error in SubmitDemoRequest", ex);
+                //_fileLogger.LogError("DemoRequestController", "Error in SubmitDemoRequest", ex);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request");
             }
 
@@ -189,7 +191,7 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in DemoReqData for request ID: {ReqId}", request?.reqId);
-                _fileLogger.LogError("DemoRequestController", $"Error in DemoReqData for request ID: {request?.reqId}", ex);
+                //_fileLogger.LogError("DemoRequestController", $"Error in DemoReqData for request ID: {request?.reqId}", ex);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while fetching claim details.");
             }
         }
@@ -222,7 +224,7 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in ApproveRejectDemoRequest for request ID: {ReqId}", request?.ReqId);
-                _fileLogger.LogError("DemoRequestController", $"Error in ApproveRejectDemoRequest for request ID: {request?.ReqId}", ex);
+                //_fileLogger.LogError("DemoRequestController", $"Error in ApproveRejectDemoRequest for request ID: {request?.ReqId}", ex);
                 return BadRequest(ex.Message);
             }
         }
@@ -273,7 +275,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                _fileLogger.LogError("DemoRequestController", "Error in GetDemoActualClaimList", ex);
+                //_fileLogger.LogError("DemoRequestController", "Error in GetDemoActualClaimList", ex);
                 return StatusCode(500, "An error occurred while fetching claim details.");
             }
         }
@@ -370,7 +372,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                _fileLogger.LogError("DemoRequestController", "Error in AddUpdateBasicClaim", ex);
+                //_fileLogger.LogError("DemoRequestController", "Error in AddUpdateBasicClaim", ex);
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
@@ -482,7 +484,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                _fileLogger.LogError("DemoRequestController", "Error in AddUpdateAllClaim", ex);
+                //_fileLogger.LogError("DemoRequestController", "Error in AddUpdateAllClaim", ex);
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
@@ -604,7 +606,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                _fileLogger.LogError("DemoRequestController", "Error in UpdateDemoActualClaim", ex);
+                //_fileLogger.LogError("DemoRequestController", "Error in UpdateDemoActualClaim", ex);
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }        
@@ -630,7 +632,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                _fileLogger.LogError("DemoRequestController", "Error in DemoTractorDoc", ex);
+                //_fileLogger.LogError("DemoRequestController", "Error in DemoTractorDoc", ex);
                 return StatusCode(500, "An error occurred while fetching claim details.");
             }
         }
@@ -664,7 +666,7 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in ApproveRejectDemoRequest for request ID: {ReqId}", request?.ReqId);
-                _fileLogger.LogError("DemoRequestController", $"Error in ApproveRejectDemoClaim for request ID: {request?.ReqId}", ex);
+                //_fileLogger.LogError("DemoRequestController", $"Error in ApproveRejectDemoClaim for request ID: {request?.ReqId}", ex);
                 return BadRequest(ex.Message);
             }
         }

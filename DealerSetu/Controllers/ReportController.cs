@@ -1,17 +1,19 @@
-﻿using DealerSetu_Data.Common;
+﻿using DealerSetu.Repository.Common;
+using DealerSetu_Data.Common;
+using DealerSetu_Data.Models.HelperModels;
+using DealerSetu_Data.Models.RequestModels;
+using DealerSetu_Data.Models.ViewModels;
 using DealerSetu_Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using DealerSetu.Repository.Common;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using DealerSetu_Data.Models.ViewModels;
-using DealerSetu_Data.Models.RequestModels;
-using DealerSetu_Data.Models.HelperModels;
 
 namespace DealerSetu.Controllers
 {
+    [Authorize(Policy = "ReportSectionAccess")]
     public class ReportController : ControllerBase
     {
         private readonly IReportService _reportService;

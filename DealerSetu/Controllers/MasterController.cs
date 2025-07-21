@@ -4,9 +4,11 @@ using Microsoft.AspNetCore.Mvc;
 using DealerSetu.Repository.Common;
 using DealerSetu_Data.Models.RequestModels;
 using DealerSetu_Data.Models.HelperModels;
+using Microsoft.AspNetCore.Authorization;
 
 namespace DealerSetu.Controllers
 {
+    [Authorize(Policy = "MasterSectionAccess")]
     public class MasterController : ControllerBase
     {
         private readonly IMasterService _masterService;
@@ -77,6 +79,8 @@ namespace DealerSetu.Controllers
         }
 
         [HttpGet("DownloadFiles")]
+        [AllowAnonymous] // Bypass controller-level authorization
+        [DownloadFilesAuthorize] // Apply specific authorization
         public async Task<IActionResult> DownloadFormats(string fileName)
         {
             if (string.IsNullOrWhiteSpace(fileName))

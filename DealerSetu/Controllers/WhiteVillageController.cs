@@ -1,16 +1,18 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using DealerSetu_Services.IServices;
-using DealerSetu_Data.Models;
+﻿using DealerSetu.Repository.Common;
 using DealerSetu_Data.Common;
-using dealersetu_services.services;
-using DealerSetu.Repository.Common;
+using DealerSetu_Data.Models;
 using DealerSetu_Data.Models.HelperModels;
 using DealerSetu_Data.Models.ViewModels;
+using dealersetu_services.services;
+using DealerSetu_Services.IServices;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace DealerSetu.Controllers
 {
     [ApiController]
     [Route("[controller]")]
+    [Authorize(Policy = "WhiteVillageKhojAccess")]
     public class WhiteListingController : ControllerBase
     {
         private readonly IWhiteVillageService _whiteVillageService;

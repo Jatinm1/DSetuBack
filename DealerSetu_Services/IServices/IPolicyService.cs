@@ -5,7 +5,8 @@ namespace DealerSetu_Services.IServices
     public interface IPolicyService
     {
         ServiceResponse GetPolicyListService();
-        public Task<ServiceResponse> SendFiletoServerService(PolicyUploadModel request);
+        public Task<ServiceResponse> SendFiletoServerService(FileUploadModel request);
+        Task<ServiceResponse> SendPolicytoServerService(PolicyUploadModel request);
 
     }
 }

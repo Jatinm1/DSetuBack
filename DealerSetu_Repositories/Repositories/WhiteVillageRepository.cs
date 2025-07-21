@@ -91,7 +91,8 @@ namespace DealerSetu_Repositories.Repositories
         /// <param name="createdBy">User who created the record</param>
         /// <param name="fiscalYear">Fiscal year for the data</param>
         /// <returns>Result code from the stored procedure</returns>
-        public async Task<string> SaveWhiteVillageFileMetadata(string filename, string stateId, string createdBy, string fiscalYear)
+        public async Task<(string Filename,string Result)> SaveWhiteVillageFileMetadata(
+    string filename, string stateId, string createdBy, string fiscalYear)
         {
             if (string.IsNullOrWhiteSpace(filename))
                 throw new ArgumentException("Filename cannot be null or empty", nameof(filename));
@@ -117,13 +118,17 @@ namespace DealerSetu_Repositories.Repositories
                 parameters.Add("@CreatedDate", DateTime.Now);
                 parameters.Add("@FYear", fiscalYear);
                 parameters.Add("@Result", dbType: DbType.String, direction: ParameterDirection.Output, size: 10);
+                parameters.Add("@ReturnedFilename", dbType: DbType.String, direction: ParameterDirection.Output, size: 500);
 
                 await connection.ExecuteAsync(
                     "sp_WHITEVILLAGE_SaveExcelFileMetadata",
                     parameters,
                     commandType: CommandType.StoredProcedure);
 
-                return parameters.Get<string>("@Result") ?? "Failed";
+                string returnedFilename = parameters.Get<string>("@ReturnedFilename") ?? string.Empty;
+                string result = parameters.Get<string>("@Result") ?? "Failed";
+
+                return (returnedFilename,result);
             }
             catch (SqlException)
             {
@@ -134,6 +139,7 @@ namespace DealerSetu_Repositories.Repositories
                 throw new InvalidOperationException("Failed to save file metadata");
             }
         }
+
 
         /// <summary>
         /// Retrieves the Blob URL for downloading a White Village file
