@@ -3,9 +3,11 @@ using DealerSetu_Data.Models.HelperModels;
 using DealerSetu_Data.Models.ViewModels;
 using DealerSetu_Repositories.IRepositories;
 using DealerSetu_Services.IServices;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
-using System.DirectoryServices;
+using Microsoft.Extensions.Logging;
 using System.ComponentModel.DataAnnotations;
+using System.DirectoryServices;
 
 namespace DealerSetu_Services.Services
 {
@@ -21,6 +23,9 @@ namespace DealerSetu_Services.Services
         private readonly IConfiguration _configuration;
         private readonly DealerSetu.Repository.Common.Utility _utility;
         private readonly JwtTokenGenerator _jwtTokenGenerator;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly ILogger<LoginService> _logger;
+
 
         #endregion
 
@@ -38,12 +43,16 @@ namespace DealerSetu_Services.Services
             ILoginRepository loginRepo,
             JwtTokenGenerator jwtTokenGenerator,
             IConfiguration configuration,
-            DealerSetu.Repository.Common.Utility utility)
+            DealerSetu.Repository.Common.Utility utility,
+            IHttpContextAccessor httpContextAccessor,
+            ILogger<LoginService> logger)
         {
             _loginRepo = loginRepo ?? throw new ArgumentNullException(nameof(loginRepo));
             _jwtTokenGenerator = jwtTokenGenerator ?? throw new ArgumentNullException(nameof(jwtTokenGenerator));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _utility = utility ?? throw new ArgumentNullException(nameof(utility));
+            _httpContextAccessor = httpContextAccessor;
+            _logger = logger;
         }
 
         #endregion
@@ -233,6 +242,9 @@ namespace DealerSetu_Services.Services
             {
                 var logoutResult = await _loginRepo.LogoutRepo(empNo);
 
+                // Clear all cookies - both HTTP-only and regular cookies
+                ClearAllAuthCookies();
+
                 return new ServiceResponse
                 {
                     Status = logoutResult.Status,
@@ -243,9 +255,11 @@ namespace DealerSetu_Services.Services
             }
             catch (Exception ex)
             {
+                // Still clear cookies even if database operation fails
+                ClearAllAuthCookies();
+
                 //----Development----
                 //return CreateErrorResponse($"Failed to logout: {ex.Message}", "500", ex.Message);
-
                 //----Production----
                 return CreateErrorResponse("Failed to logout", "500");
             }
@@ -364,6 +378,119 @@ namespace DealerSetu_Services.Services
             return response;
         }
 
+        private CookieOptions GetJwtCookieOptions(bool expired = false)
+        {
+            var options = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Path = "/",
+                Domain = null
+            };
+
+            if (expired)
+            {
+                options.Expires = DateTime.UtcNow.AddDays(-1);
+            }
+
+            return options;
+        }
+        private void ClearAllAuthCookies()
+        {
+            try
+            {
+                var httpContext = _httpContextAccessor.HttpContext;
+                if (httpContext != null)
+                {
+                    // Log current cookies for debugging
+                    var existingJwt = httpContext.Request.Cookies["jwt"];
+                    //_logger.LogInformation($"JWT cookie exists before clearing: {!string.IsNullOrEmpty(existingJwt)}");
+
+                    // STRATEGY 1: Try multiple domain variations
+                    var domainVariations = new string[] { null, "", httpContext.Request.Host.Host };
+
+                    foreach (var domain in domainVariations)
+                    {
+                        // Method 1: Set expired cookie
+                        httpContext.Response.Cookies.Append("jwt", "", new CookieOptions
+                        {
+                            HttpOnly = true,
+                            Secure = true,
+                            SameSite = SameSiteMode.None,
+                            Path = "/",
+                            Domain = domain,
+                            Expires = DateTime.UtcNow.AddYears(-1)
+                        });
+
+                        // Method 2: Delete cookie
+                        httpContext.Response.Cookies.Delete("jwt", new CookieOptions
+                        {
+                            HttpOnly = true,
+                            Secure = true,
+                            SameSite = SameSiteMode.None,
+                            Path = "/",
+                            Domain = domain
+                        });
+                    }
+
+                    // STRATEGY 2: Also try without Secure flag (in case of mixed HTTP/HTTPS)
+                    httpContext.Response.Cookies.Append("jwt", "", new CookieOptions
+                    {
+                        HttpOnly = true,
+                        Secure = false, // Try without secure
+                        SameSite = SameSiteMode.None,
+                        Path = "/",
+                        Expires = DateTime.UtcNow.AddYears(-1)
+                    });
+
+                    httpContext.Response.Cookies.Delete("jwt", new CookieOptions
+                    {
+                        HttpOnly = true,
+                        Secure = false,
+                        SameSite = SameSiteMode.None,
+                        Path = "/"
+                    });
+
+                    // STRATEGY 3: Try different SameSite values
+                    var sameSiteValues = new[] { SameSiteMode.None, SameSiteMode.Lax, SameSiteMode.Strict };
+                    foreach (var sameSite in sameSiteValues)
+                    {
+                        httpContext.Response.Cookies.Delete("jwt", new CookieOptions
+                        {
+                            HttpOnly = true,
+                            Secure = true,
+                            SameSite = sameSite,
+                            Path = "/"
+                        });
+                    }
+
+                    // Clear other cookies (existing code)
+                    ClearRegularCookies(httpContext);
+                }
+            }
+            catch (Exception ex)
+            {
+                // _logger.LogError(ex, "Error clearing cookies during logout");
+            }
+        }
+
+        private void ClearRegularCookies(HttpContext httpContext)
+        {
+            var regularCookieOptions = new CookieOptions
+            {
+                HttpOnly = false,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Path = "/"
+            };
+
+            httpContext.Response.Cookies.Delete("isAuthenticated", regularCookieOptions);
+            httpContext.Response.Cookies.Delete("empNo", regularCookieOptions);
+            httpContext.Response.Cookies.Delete("userName", regularCookieOptions);
+            httpContext.Response.Cookies.Delete("userRole", regularCookieOptions);
+            httpContext.Response.Cookies.Delete("lastActivity", regularCookieOptions);
+        }
         /// <summary>
         /// Creates a standardized error response.
         /// </summary>

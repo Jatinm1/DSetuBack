@@ -14,6 +14,7 @@ using DealerSetu_Data.Middleware;
 using Azure.Storage.Blobs;
 using DealerSetu_Data.Models.HelperModels;
 using DealerSetu.Repository.Common;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -83,8 +84,55 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
             ValidateIssuerSigningKey = true,
-            ValidateLifetime = true,    // recent changes
-            ClockSkew = TimeSpan.Zero   // recent changes
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero,
+            // Important: Map JWT claims to .NET role claims
+            RoleClaimType = "Role",
+            NameClaimType = ClaimTypes.NameIdentifier
+        };
+
+        // Configure to read JWT token from HTTP-only cookie
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                // Try to get token from cookie first
+                var token = context.Request.Cookies["jwt"];
+                if (!string.IsNullOrEmpty(token))
+                {
+                    context.Token = token;
+                }
+                // If not found in cookie, fall back to Authorization header
+                else if (context.Request.Headers.ContainsKey("Authorization"))
+                {
+                    var authHeader = context.Request.Headers["Authorization"].ToString();
+                    if (authHeader.StartsWith("Bearer "))
+                    {
+                        context.Token = authHeader.Substring("Bearer ".Length).Trim();
+                    }
+                }
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                // Debug: Log all claims to see what's available
+                var claims = context.Principal?.Claims.Select(c => $"{c.Type}: {c.Value}").ToList();
+                Console.WriteLine("Available claims:");
+                claims?.ForEach(Console.WriteLine);
+
+                // Ensure role claim is properly mapped
+                var identity = context.Principal?.Identity as ClaimsIdentity;
+                if (identity != null)
+                {
+                    var roleClaim = identity.FindFirst("Role");
+                    if (roleClaim != null && !identity.HasClaim(ClaimTypes.Role, roleClaim.Value))
+                    {
+                        identity.AddClaim(new Claim(ClaimTypes.Role, roleClaim.Value));
+                    }
+                }
+
+                return Task.CompletedTask;
+            }
         };
     });
 #endregion
@@ -118,9 +166,6 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("DownloadAccess", policy =>
     policy.RequireRole("Dealer", "TM", "CCM", "CM", "SH", "HO", "AM"));
 });
-
-
-
 
 builder.Services.AddHttpContextAccessor();
 
@@ -176,7 +221,6 @@ builder.Services.AddCors(options =>
         builder.WithOrigins("http://localhost:4200").AllowAnyMethod().AllowAnyHeader().AllowCredentials();   // Staging
         builder.WithOrigins("http://dealersetu.stg103.netsmartz.us").AllowAnyMethod().AllowAnyHeader().AllowCredentials();   // Staging
         builder.WithOrigins("https://swdsetu.m-devsecops.com").AllowAnyMethod().AllowAnyHeader().AllowCredentials();   // Developement
-
     });
 });
 #endregion

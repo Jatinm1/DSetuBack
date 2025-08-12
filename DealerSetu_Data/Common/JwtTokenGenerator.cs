@@ -1,18 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Claims;
-using Microsoft.Extensions.Configuration;
-using System.IdentityModel.Tokens.Jwt;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.IdentityModel.Tokens;
+﻿using DealerSetu_Data.Models;
 using DealerSetu_Data.Models.HelperModels;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using System;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace DealerSetu_Data.Common
 {
     public class JwtTokenGenerator
     {
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        public JwtTokenGenerator(IHttpContextAccessor httpContextAccessor)
+        {
+            _httpContextAccessor = httpContextAccessor;
+        }
+
         public string GenerateJsonWebToken(TokenHelperModel user, IConfiguration configuration)
         {
             try
@@ -20,27 +25,60 @@ namespace DealerSetu_Data.Common
                 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:Key"]));
                 var claims = new[]
                 {
-                 new Claim(JwtRegisteredClaimNames.NameId, user.EmpNo.ToString()),  // Use NameId or custom UserId
-                 new Claim(JwtRegisteredClaimNames.Sub, user.EmpNo),
-                 new Claim(JwtRegisteredClaimNames.Iat, new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
-                 new Claim("UserId", user.UserId.ToString(), ClaimValueTypes.Integer),
-                 new Claim("RoleId", user.RoleId.ToString()),  // Optional custom claim
-                 new Claim(ClaimTypes.Role, user.Role.ToString()),  // Standard role claim for authorization
-                 new Claim("Role", user.Role.ToString()),  // Keep custom role claim for backward compatibility
-                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),  // Unique token ID
-                };
+            new Claim(JwtRegisteredClaimNames.NameId, user.EmpNo.ToString()),
+            new Claim(JwtRegisteredClaimNames.Sub, user.EmpNo),
+            new Claim(JwtRegisteredClaimNames.Iat, new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
+            new Claim("UserId", user.UserId.ToString(), ClaimValueTypes.Integer),
+            new Claim("RoleId", user.RoleId.ToString()),
+            new Claim("Role", user.Role.ToString()),
+            new Claim(ClaimTypes.Role, user.Role.ToString()),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+        };
+
                 var jwt = new JwtSecurityToken(
                     issuer: configuration["Jwt:Issuer"],
                     audience: configuration["Jwt:Audience"],
                     claims: claims,
                     notBefore: DateTime.UtcNow,
-                    expires: DateTime.UtcNow.AddMinutes(30),  // Token expiration time
-                    signingCredentials: new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256));
-                return new JwtSecurityTokenHandler().WriteToken(jwt);
+                    expires: DateTime.UtcNow.AddMinutes(30),
+                    signingCredentials: new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256)
+                );
+
+                var token = new JwtSecurityTokenHandler().WriteToken(jwt);
+
+                // Use consistent cookie options for setting JWT
+                var jwtCookieOptions = new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Expires = DateTime.UtcNow.AddMinutes(30),
+                    Path = "/",
+                    Domain = null // Make sure this is consistent
+                };
+
+                _httpContextAccessor.HttpContext?.Response.Cookies.Append("jwt", token, jwtCookieOptions);
+
+                // Set other cookies with consistent options
+                var regularCookieOptions = new CookieOptions
+                {
+                    HttpOnly = false,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Expires = DateTime.UtcNow.AddMinutes(30),
+                    Path = "/"
+                };
+
+                _httpContextAccessor.HttpContext?.Response.Cookies.Append("isAuthenticated", "true", regularCookieOptions);
+                _httpContextAccessor.HttpContext?.Response.Cookies.Append("empNo", user.EmpNo, regularCookieOptions);
+                _httpContextAccessor.HttpContext?.Response.Cookies.Append("userName", user.UserName, regularCookieOptions);
+                _httpContextAccessor.HttpContext?.Response.Cookies.Append("userRole", user.Role, regularCookieOptions);
+
+                return token;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                throw;  // Use throw; to retain original exception stack trace
+                throw;
             }
         }
     }

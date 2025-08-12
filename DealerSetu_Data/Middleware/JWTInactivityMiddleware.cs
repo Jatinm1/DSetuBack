@@ -24,37 +24,36 @@ namespace DealerSetu_Data.Middleware
 
         // Paths to skip token validation (e.g., Login API)
         private readonly HashSet<string> _excludedTokenValidationPaths = new(StringComparer.OrdinalIgnoreCase)
-{
-    "/Login/LoginUser",
-    "/api/Login/LoginUser",
-    "/swagger",
-    "/swagger/index.html",
-    "/swagger/v1/swagger.json",
-    "/health",
-    "/Login/init-csrf",
-};
+        {
+            "/Login/LoginUser",
+            "/api/Login/LoginUser",
+            "/swagger",
+            "/swagger/index.html",
+            "/swagger/v1/swagger.json",
+            "/health",
+            "/Login/init-csrf",
+        };
 
         // Paths to skip inactivity checks (e.g., Heartbeat API)
         private readonly HashSet<string> _excludedInactivityCheckPaths = new(StringComparer.OrdinalIgnoreCase)
-{
-    "/Login/LoginHeartBeat",
-    "/api/Login/LoginHeartBeat",
-    "/swagger",
-    "/health",
-    "/Login/init-csrf",
-};
+        {
+            "/Login/LoginHeartBeat",
+            "/api/Login/LoginHeartBeat",
+            "/swagger",
+            "/health",
+            "/Login/init-csrf",
+        };
 
         private readonly HashSet<string> _excludedAntiforgeryPaths = new(StringComparer.OrdinalIgnoreCase)
-{
-    "/Login/LoginUser",
-    "/api/Login/LoginUser",
-    "/Login/LoginHeartBeat",
-    "/api/Login/LoginHeartBeat",
-    "/swagger",
-    "/health",
-    "/Login/init-csrf",
-};
-
+        {
+            "/Login/LoginUser",
+            "/api/Login/LoginUser",
+            "/Login/LoginHeartBeat",
+            "/api/Login/LoginHeartBeat",
+            "/swagger",
+            "/health",
+            "/Login/init-csrf",
+        };
 
         public JWTInactivityMiddleware(
             RequestDelegate next,
@@ -98,7 +97,14 @@ namespace DealerSetu_Data.Middleware
 
             try
             {
-                var token = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
+                // Read JWT token from HTTP-only cookie instead of Authorization header
+                var token = context.Request.Cookies["jwt"];
+
+                // Fallback to Authorization header if cookie is not present (for backward compatibility)
+                if (string.IsNullOrEmpty(token))
+                {
+                    token = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
+                }
 
                 if (string.IsNullOrEmpty(token))
                 {
@@ -111,11 +117,14 @@ namespace DealerSetu_Data.Middleware
                 var handler = new JwtSecurityTokenHandler();
                 var validationParameters = new TokenValidationParameters
                 {
-                    ValidateIssuer = false,
-                    ValidateAudience = false,
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidAudience = _configuration["Jwt:Audience"],
+                    ValidIssuer = _configuration["Jwt:Issuer"],
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secretKey))
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secretKey)),
+                    ClockSkew = TimeSpan.Zero
                 };
 
                 var principal = handler.ValidateToken(token, validationParameters, out var validatedToken);
@@ -138,6 +147,44 @@ namespace DealerSetu_Data.Middleware
                         if (await IsUserInactive(empNo))
                         {
                             await LogoutUser(empNo);
+
+                            // Clear all authentication cookies with proper options
+                            context.Response.Cookies.Delete("jwt", new CookieOptions
+                            {
+                                HttpOnly = true,
+                                Secure = true,
+                                SameSite = SameSiteMode.None,
+                                Path = "/"
+                            });
+                            context.Response.Cookies.Delete("isAuthenticated", new CookieOptions
+                            {
+                                HttpOnly = false,
+                                Secure = true,
+                                SameSite = SameSiteMode.None,
+                                Path = "/"
+                            });
+                            context.Response.Cookies.Delete("empNo", new CookieOptions
+                            {
+                                HttpOnly = false,
+                                Secure = true,
+                                SameSite = SameSiteMode.None,
+                                Path = "/"
+                            });
+                            context.Response.Cookies.Delete("userName", new CookieOptions
+                            {
+                                HttpOnly = false,
+                                Secure = true,
+                                SameSite = SameSiteMode.None,
+                                Path = "/"
+                            });
+                            context.Response.Cookies.Delete("userRole", new CookieOptions
+                            {
+                                HttpOnly = false,
+                                Secure = true,
+                                SameSite = SameSiteMode.None,
+                                Path = "/"
+                            });
+
                             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                             await context.Response.WriteAsJsonAsync(new { message = "Session expired due to inactivity" });
                             return;
@@ -155,6 +202,44 @@ namespace DealerSetu_Data.Middleware
             catch (SecurityTokenExpiredException)
             {
                 _logger.LogWarning("Token has expired.");
+
+                // Clear cookies with proper options on token expiration
+                context.Response.Cookies.Delete("jwt", new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Path = "/"
+                });
+                context.Response.Cookies.Delete("isAuthenticated", new CookieOptions
+                {
+                    HttpOnly = false,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Path = "/"
+                });
+                context.Response.Cookies.Delete("empNo", new CookieOptions
+                {
+                    HttpOnly = false,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Path = "/"
+                });
+                context.Response.Cookies.Delete("userName", new CookieOptions
+                {
+                    HttpOnly = false,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Path = "/"
+                });
+                context.Response.Cookies.Delete("userRole", new CookieOptions
+                {
+                    HttpOnly = false,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Path = "/"
+                });
+
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 await context.Response.WriteAsJsonAsync(new { message = "Token has expired" });
                 return;
@@ -177,7 +262,6 @@ namespace DealerSetu_Data.Middleware
         {
             return _excludedInactivityCheckPaths.Contains(path);
         }
-
 
         private async Task<bool> IsUserInactive(string empNo)
         {
