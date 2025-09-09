@@ -13,6 +13,5 @@ namespace DealerSetu_Repositories.IRepositories
         bool IsUserInAbharDealer(string userId);
         bool IsUserInArohanDealer(string userId);
         Task<List<PendingCountModel>> PendingCountRepo(string empNo, string roleId);
-        //Task<DashboardCounts> GetDashboardCountsAsync(string userId);
     }
 }

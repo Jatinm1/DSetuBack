@@ -60,13 +60,9 @@ namespace DealerSetu_Services.Services
 
                 return CreateSuccessResponse(newActivities, totalCount, "New Activities retrieved successfully");
             }
-            catch (ArgumentException ex)
+            catch
             {
-                return CreateErrorResponse(ex.Message, "400");
-            }
-            catch (Exception ex)
-            {
-                return CreateErrorResponse("Error while retrieving New Activities", "500", ex.Message);
+                return CreateErrorResponse("An error occurred while processing your request", "500");
             }
         }
 
@@ -87,13 +83,9 @@ namespace DealerSetu_Services.Services
 
                 return CreateSuccessResponse(newPendingActivities, totalCount, "New Pending Activities retrieved successfully");
             }
-            catch (ArgumentException ex)
+            catch
             {
-                return CreateErrorResponse(ex.Message, "400");
-            }
-            catch (Exception ex)
-            {
-                return CreateErrorResponse("Error while retrieving New Pending Activities", "500", ex.Message);
+                return CreateErrorResponse("An error occurred while processing your request", "500");
             }
         }
 
@@ -108,9 +100,9 @@ namespace DealerSetu_Services.Services
                 var states = await _newDealerRepo.DealerStatesRepo();
                 return CreateSuccessResponse(states, "States retrieved successfully");
             }
-            catch (Exception ex)
+            catch
             {
-                return CreateErrorResponse("Error retrieving states", "500", ex.Message);
+                return CreateErrorResponse("An error occurred while processing your request", "500");
             }
         }
 
@@ -130,13 +122,9 @@ namespace DealerSetu_Services.Services
                 var dealerData = await _newDealerRepo.DealerDataRepo(requestNo);
                 return CreateSuccessResponse(dealerData, "Dealer Data retrieved successfully");
             }
-            catch (ArgumentNullException ex)
+            catch
             {
-                return CreateErrorResponse(ex.Message, "400");
-            }
-            catch (Exception ex)
-            {
-                return CreateErrorResponse("Error retrieving Dealer Data", "500", ex.Message);
+                return CreateErrorResponse("An error occurred while processing your request", "500");
             }
         }
 
@@ -156,22 +144,22 @@ namespace DealerSetu_Services.Services
                 var validationResult = ValidateClaimSubmissionParameters(requestNo, dealerNo, activityData, empNo);
                 if (!validationResult.IsValid)
                 {
-                    return CreateErrorResponse(validationResult.ErrorMessage, "400");
+                    return CreateErrorResponse("Invalid input data", "400");
                 }
 
                 // Validate activity data for malicious content
                 var maliciousValidationResult = ValidateActivityDataForMaliciousContent(activityData);
                 if (!maliciousValidationResult.IsValid)
                 {
-                    return CreateErrorResponse(maliciousValidationResult.ErrorMessage, "400");
+                    return CreateErrorResponse("Invalid input data", "400");
                 }
 
                 var claimId = await _newDealerRepo.SubmitClaimRepo(requestNo, dealerNo, activityData, empNo);
                 return CreateSuccessResponse(claimId, "Claim Submitted successfully");
             }
-            catch (Exception ex)
+            catch
             {
-                return CreateErrorResponse("Error submitting Claim", "500", ex.Message);
+                return CreateErrorResponse("An error occurred while processing your request", "500");
             }
         }
 
@@ -197,19 +185,15 @@ namespace DealerSetu_Services.Services
                 var maliciousValidationResult = ValidateActivityDataForMaliciousContent(activityData);
                 if (!maliciousValidationResult.IsValid)
                 {
-                    return CreateErrorResponse(maliciousValidationResult.ErrorMessage, "400");
+                    return CreateErrorResponse("Invalid input data", "400");
                 }
 
                 await _newDealerRepo.UpdateClaimRepo(claimId, activityData, empNo);
                 return CreateSuccessResponse(claimId, "Claim Updated successfully");
             }
-            catch (ArgumentException ex)
+            catch
             {
-                return CreateErrorResponse(ex.Message, "400");
-            }
-            catch (Exception ex)
-            {
-                return CreateErrorResponse("Error Updating Claim", "500", ex.Message);
+                return CreateErrorResponse("An error occurred while processing your request", "500");
             }
         }
 
@@ -230,20 +214,16 @@ namespace DealerSetu_Services.Services
                 {
                     if (_fileValidationService.ContainsMaliciousPatterns(filter.RejectRemarks))
                     {
-                        return CreateErrorResponse("Reject Remarks contains potentially malicious content", "400");
+                        return CreateErrorResponse("Invalid input data", "400");
                     }
                 }
 
                 var claimId = await _newDealerRepo.ApproveRejectClaimRepo(filter);
                 return CreateSuccessResponse(claimId, "Claim Approved/Rejected Successfully");
             }
-            catch (ArgumentNullException ex)
+            catch
             {
-                return CreateErrorResponse(ex.Message, "400");
-            }
-            catch (Exception ex)
-            {
-                return CreateErrorResponse("Error Approving/Rejecting Claim", "500", ex.Message);
+                return CreateErrorResponse("An error occurred while processing your request", "500");
             }
         }
 
@@ -262,13 +242,9 @@ namespace DealerSetu_Services.Services
                 var claimDetails = await _newDealerRepo.ClaimDetailsRepo(claimId);
                 return CreateSuccessResponse(claimDetails, "Claim Details retrieved successfully");
             }
-            catch (ArgumentException ex)
+            catch
             {
-                return CreateErrorResponse(ex.Message, "400");
-            }
-            catch (Exception ex)
-            {
-                return CreateErrorResponse("Error retrieving Claim Details", "500", ex.Message);
+                return CreateErrorResponse("An error occurred while processing your request", "500");
             }
         }
 
@@ -292,19 +268,15 @@ namespace DealerSetu_Services.Services
                 var validationResult = ValidateActualClaimForMaliciousContent(request);
                 if (!validationResult.IsValid)
                 {
-                    return CreateErrorResponse(validationResult.ErrorMessage, "400");
+                    return CreateErrorResponse("Invalid input data", "400");
                 }
 
                 var claimId = await _newDealerRepo.AddActualClaimRepo(request);
                 return CreateSuccessResponse(claimId, "Claim Submitted successfully");
             }
-            catch (ArgumentNullException ex)
+            catch
             {
-                return CreateErrorResponse(ex.Message, "400");
-            }
-            catch (Exception ex)
-            {
-                return CreateErrorResponse("Error submitting Claim", "500", ex.Message);
+                return CreateErrorResponse("An error occurred while processing your request", "500");
             }
         }
 
@@ -322,29 +294,21 @@ namespace DealerSetu_Services.Services
                 var validationResult = ValidateActualClaimUpdateForMaliciousContent(request);
                 if (!validationResult.IsValid)
                 {
-                    return CreateErrorResponse(validationResult.ErrorMessage, "400");
+                    return CreateErrorResponse("Invalid input data", "400");
                 }
 
                 var updatedClaimId = await _newDealerRepo.UpdateActualClaimRepo(request);
 
                 if (updatedClaimId == 0)
                 {
-                    return CreateErrorResponse("Claim not found or no changes made", "404");
+                    return CreateErrorResponse("An error occurred while processing your request", "404");
                 }
 
                 return CreateSuccessResponse(updatedClaimId, "Claim updated successfully");
             }
-            catch (ArgumentNullException ex)
+            catch
             {
-                return CreateErrorResponse(ex.Message, "400");
-            }
-            catch (ArgumentException ex)
-            {
-                return CreateErrorResponse(ex.Message, "400");
-            }
-            catch (Exception ex)
-            {
-                return CreateErrorResponse("Error updating Claim", "500", ex.Message);
+                return CreateErrorResponse("An error occurred while processing your request", "500");
             }
         }
 
@@ -367,20 +331,16 @@ namespace DealerSetu_Services.Services
                 {
                     if (_fileValidationService.ContainsMaliciousPatterns(actualRemarks))
                     {
-                        return CreateErrorResponse("Actual Remarks contains potentially malicious content", "400");
+                        return CreateErrorResponse("Invalid input data", "400");
                     }
                 }
 
                 var activityId = await _newDealerRepo.AddActualRemarkRepo(claimId, actualRemarks);
                 return CreateSuccessResponse(activityId, "Actual Remarks Added successfully");
             }
-            catch (ArgumentException ex)
+            catch
             {
-                return CreateErrorResponse(ex.Message, "400");
-            }
-            catch (Exception ex)
-            {
-                return CreateErrorResponse("Error adding Actual Remarks", "500", ex.Message);
+                return CreateErrorResponse("An error occurred while processing your request", "500");
             }
         }
 
@@ -401,13 +361,9 @@ namespace DealerSetu_Services.Services
                 var actualClaimDetails = await _newDealerRepo.ActualClaimDetailsRepo(activityId);
                 return CreateSuccessResponse(actualClaimDetails, "Actual Claim Details retrieved successfully");
             }
-            catch (ArgumentException ex)
+            catch
             {
-                return CreateErrorResponse(ex.Message, "400");
-            }
-            catch (Exception ex)
-            {
-                return CreateErrorResponse("Error retrieving Actual Claim Details", "500", ex.Message);
+                return CreateErrorResponse("An error occurred while processing your request", "500");
             }
         }
 
@@ -423,9 +379,9 @@ namespace DealerSetu_Services.Services
                 var claimDetails = await _newDealerRepo.ActualClaimListRepo(filter);
                 return CreateSuccessResponse(claimDetails, "Actual Claim List retrieved successfully");
             }
-            catch (Exception ex)
+            catch
             {
-                return CreateErrorResponse("Error retrieving Actual Claim List", "500", ex.Message);
+                return CreateErrorResponse("An error occurred while processing your request", "500");
             }
         }
 
@@ -446,20 +402,16 @@ namespace DealerSetu_Services.Services
                 {
                     if (_fileValidationService.ContainsMaliciousPatterns(filter.RejectRemarks))
                     {
-                        return CreateErrorResponse("Reject Remarks contains potentially malicious content", "400");
+                        return CreateErrorResponse("Invalid input data", "400");
                     }
                 }
 
                 var claimId = await _newDealerRepo.ApproveRejectActualClaimRepo(filter);
                 return CreateSuccessResponse(claimId, "Actual Claim Approved/Rejected Successfully");
             }
-            catch (ArgumentNullException ex)
+            catch
             {
-                return CreateErrorResponse(ex.Message, "400");
-            }
-            catch (Exception ex)
-            {
-                return CreateErrorResponse("Error Approving/Rejecting Actual Claim", "500", ex.Message);
+                return CreateErrorResponse("An error occurred while processing your request", "500");
             }
         }
 
@@ -475,11 +427,18 @@ namespace DealerSetu_Services.Services
         /// <exception cref="ArgumentException">Thrown when parameters are invalid</exception>
         private static void ValidatePaginationParameters(int pageIndex, int pageSize)
         {
-            if (pageIndex < 0)
-                throw new ArgumentException("Page index cannot be negative", nameof(pageIndex));
+            try
+            {
+                if (pageIndex < 0)
+                    throw new ArgumentException("Page index cannot be negative", nameof(pageIndex));
 
-            if (pageSize <= 0 || pageSize > 1000)
-                throw new ArgumentException("Page size must be between 1 and 1000", nameof(pageSize));
+                if (pageSize <= 0 || pageSize > 1000)
+                    throw new ArgumentException("Page size must be between 1 and 1000", nameof(pageSize));
+            }
+            catch
+            {
+                throw new ArgumentException("Invalid pagination parameters");
+            }
         }
 
         /// <summary>
@@ -492,19 +451,26 @@ namespace DealerSetu_Services.Services
         /// <returns>Validation result indicating success or failure</returns>
         private static ValidationResult ValidateClaimSubmissionParameters(string requestNo, string dealerNo, List<ActivityModel> activityData, string empNo)
         {
-            if (string.IsNullOrWhiteSpace(requestNo))
-                return ValidationResult.Failed("Request number cannot be null or empty");
+            try
+            {
+                if (string.IsNullOrWhiteSpace(requestNo))
+                    return ValidationResult.Failed("Request number cannot be null or empty");
 
-            if (string.IsNullOrWhiteSpace(dealerNo))
-                return ValidationResult.Failed("Dealer number cannot be null or empty");
+                if (string.IsNullOrWhiteSpace(dealerNo))
+                    return ValidationResult.Failed("Dealer number cannot be null or empty");
 
-            if (string.IsNullOrWhiteSpace(empNo))
-                return ValidationResult.Failed("Employee number cannot be null or empty");
+                if (string.IsNullOrWhiteSpace(empNo))
+                    return ValidationResult.Failed("Employee number cannot be null or empty");
 
-            if (activityData == null || !activityData.Any())
-                return ValidationResult.Failed("Activity data cannot be empty");
+                if (activityData == null || !activityData.Any())
+                    return ValidationResult.Failed("Activity data cannot be empty");
 
-            return ValidationResult.Success();
+                return ValidationResult.Success();
+            }
+            catch
+            {
+                return ValidationResult.Failed("Invalid input data");
+            }
         }
 
         /// <summary>
@@ -514,26 +480,33 @@ namespace DealerSetu_Services.Services
         /// <returns>Validation result indicating success or failure</returns>
         private ValidationResult ValidateActivityDataForMaliciousContent(List<ActivityModel> activityData)
         {
-            foreach (var activity in activityData)
+            try
             {
-                var propertiesToValidate = new Dictionary<string, string>
+                foreach (var activity in activityData)
                 {
-                    { nameof(activity.ActivityType), activity.ActivityType },
-                    { nameof(activity.ActivityThrough), activity.ActivityThrough },
-                    { nameof(activity.ActivityMonth), activity.ActivityMonth },
-                    { nameof(activity.BudgetRequested), activity.BudgetRequested }
-                };
-
-                foreach (var prop in propertiesToValidate)
-                {
-                    if (_fileValidationService.ContainsMaliciousPatterns(prop.Value))
+                    var propertiesToValidate = new Dictionary<string, string>
                     {
-                        string displayName = FormatPropertyName(prop.Key);
-                        return ValidationResult.Failed($"{displayName} contains potentially malicious content");
+                        { nameof(activity.ActivityType), activity.ActivityType },
+                        { nameof(activity.ActivityThrough), activity.ActivityThrough },
+                        { nameof(activity.ActivityMonth), activity.ActivityMonth },
+                        { nameof(activity.BudgetRequested), activity.BudgetRequested }
+                    };
+
+                    foreach (var prop in propertiesToValidate)
+                    {
+                        if (_fileValidationService.ContainsMaliciousPatterns(prop.Value))
+                        {
+                            string displayName = FormatPropertyName(prop.Key);
+                            return ValidationResult.Failed($"{displayName} contains potentially malicious content");
+                        }
                     }
                 }
+                return ValidationResult.Success();
             }
-            return ValidationResult.Success();
+            catch
+            {
+                return ValidationResult.Failed("Invalid input data");
+            }
         }
 
         /// <summary>
@@ -543,25 +516,32 @@ namespace DealerSetu_Services.Services
         /// <returns>Validation result indicating success or failure</returns>
         private ValidationResult ValidateActualClaimForMaliciousContent(ActualClaimModel request)
         {
-            var fieldsToValidate = new Dictionary<string, string>
+            try
             {
-                { nameof(request.ActualExpenses), request.ActualExpenses },
-                { nameof(request.DateOfActivity), request.DateOfActivity },
-                { nameof(request.CustomerContacted), request.CustomerContacted },
-                { nameof(request.Enquiry), request.Enquiry },
-                { nameof(request.Delivery), request.Delivery }
-            };
-
-            foreach (var field in fieldsToValidate)
-            {
-                if (!string.IsNullOrWhiteSpace(field.Value) &&
-                    _fileValidationService.ContainsMaliciousPatterns(field.Value))
+                var fieldsToValidate = new Dictionary<string, string>
                 {
-                    string displayName = FormatPropertyName(field.Key);
-                    return ValidationResult.Failed($"{displayName} contains potentially malicious content");
+                    { nameof(request.ActualExpenses), request.ActualExpenses },
+                    { nameof(request.DateOfActivity), request.DateOfActivity },
+                    { nameof(request.CustomerContacted), request.CustomerContacted },
+                    { nameof(request.Enquiry), request.Enquiry },
+                    { nameof(request.Delivery), request.Delivery }
+                };
+
+                foreach (var field in fieldsToValidate)
+                {
+                    if (!string.IsNullOrWhiteSpace(field.Value) &&
+                        _fileValidationService.ContainsMaliciousPatterns(field.Value))
+                    {
+                        string displayName = FormatPropertyName(field.Key);
+                        return ValidationResult.Failed($"{displayName} contains potentially malicious content");
+                    }
                 }
+                return ValidationResult.Success();
             }
-            return ValidationResult.Success();
+            catch
+            {
+                return ValidationResult.Failed("Invalid input data");
+            }
         }
 
         /// <summary>
@@ -571,26 +551,33 @@ namespace DealerSetu_Services.Services
         /// <returns>Validation result indicating success or failure</returns>
         private ValidationResult ValidateActualClaimUpdateForMaliciousContent(ActualClaimUpdateModel request)
         {
-            var fieldsToValidate = new Dictionary<string, string?>
-    {
-        { nameof(request.ActualExpenses), request.ActualExpenses },
-        { nameof(request.DateOfActivity), request.DateOfActivity },
-        { nameof(request.CustomerContacted), request.CustomerContacted },
-        { nameof(request.Enquiry), request.Enquiry },
-        { nameof(request.Delivery), request.Delivery }
-    };
-
-            foreach (var field in fieldsToValidate)
+            try
             {
-                if (!string.IsNullOrWhiteSpace(field.Value) &&
-                    _fileValidationService.ContainsMaliciousPatterns(field.Value))
+                var fieldsToValidate = new Dictionary<string, string?>
                 {
-                    string displayName = FormatPropertyName(field.Key);
-                    return ValidationResult.Failed($"{displayName} contains potentially malicious content");
-                }
-            }
+                    { nameof(request.ActualExpenses), request.ActualExpenses },
+                    { nameof(request.DateOfActivity), request.DateOfActivity },
+                    { nameof(request.CustomerContacted), request.CustomerContacted },
+                    { nameof(request.Enquiry), request.Enquiry },
+                    { nameof(request.Delivery), request.Delivery }
+                };
 
-            return ValidationResult.Success();
+                foreach (var field in fieldsToValidate)
+                {
+                    if (!string.IsNullOrWhiteSpace(field.Value) &&
+                        _fileValidationService.ContainsMaliciousPatterns(field.Value))
+                    {
+                        string displayName = FormatPropertyName(field.Key);
+                        return ValidationResult.Failed($"{displayName} contains potentially malicious content");
+                    }
+                }
+
+                return ValidationResult.Success();
+            }
+            catch
+            {
+                return ValidationResult.Failed("Invalid input data");
+            }
         }
 
 
@@ -603,7 +590,14 @@ namespace DealerSetu_Services.Services
         /// <returns>Formatted property name</returns>
         private static string FormatPropertyName(string propertyName)
         {
-            return string.Concat(propertyName.Select(c => char.IsUpper(c) ? " " + c : c.ToString())).Trim();
+            try
+            {
+                return string.Concat(propertyName.Select(c => char.IsUpper(c) ? " " + c : c.ToString())).Trim();
+            }
+            catch
+            {
+                return propertyName;
+            }
         }
 
         /// <summary>

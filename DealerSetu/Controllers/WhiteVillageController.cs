@@ -93,7 +93,7 @@ namespace DealerSetu.Controllers
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
-                    Error = ex.Message,
+                    Error = "An unexpected error occurred",
                     Message = "An unexpected error occurred",
                     Status = "Error",
                     Code = "500"
@@ -129,15 +129,14 @@ namespace DealerSetu.Controllers
 
                 return Ok(new { downloadUrl });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (UnauthorizedAccessException)
             {
-                _logger.LogError("WhiteListingController", "Unauthorized access in DownloadFormats", ex);
-                return StatusCode(403, new { error = ex.Message });
+                return StatusCode(403, new { error = "Access denied." });
             }
             catch (Exception ex)
             {
                 _logger.LogError("WhiteListingController", "Error in DownloadFormats", ex);
-                return StatusCode(500, new { error = "An unexpected error occurred.", details = ex.Message });
+                return StatusCode(500, new { error = "An unexpected error occurred." });
             }
         }
 
@@ -153,7 +152,7 @@ namespace DealerSetu.Controllers
             catch (Exception ex)
             {
                 _logger.LogError("WhiteListingController", "Error in ListFiles", ex);
-                return StatusCode(500, new { error = "An unexpected error occurred.", details = ex.Message });
+                return StatusCode(500, new { error = "An unexpected error occurred." });
             }
         }
 
@@ -184,15 +183,14 @@ namespace DealerSetu.Controllers
 
                 return Ok(new { success = true, message = $"File '{fileName}' successfully deleted." });
             }
-            catch (UnauthorizedAccessException ex)
+            catch (UnauthorizedAccessException)
             {
-                _logger.LogError("WhiteListingController", "Unauthorized access in DeleteFile", ex);
-                return StatusCode(403, new { error = ex.Message });
+                return StatusCode(403, new { error = "Access denied." });
             }
             catch (Exception ex)
             {
                 _logger.LogError("WhiteListingController", "Error in DeleteFile", ex);
-                return StatusCode(500, new { error = "An unexpected error occurred.", details = ex.Message });
+                return StatusCode(500, new { error = "An unexpected error occurred." });
             }
         }
     }

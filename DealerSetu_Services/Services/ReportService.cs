@@ -34,31 +34,23 @@ namespace DealerSetu_Services.Services
                 var (reports, totalCount) = await _reportRepository.RequestSectionReportRepo(filter, pageIndex, pageSize);
 
                 if (reports == null)
-                    return CreateErrorResponse("Repository returned null result", "500");
+                    return CreateErrorResponse("Unable to retrieve reports", "500");
 
                 return CreateSuccessResponse(reports, totalCount, "Reports retrieved successfully", "No reports found for the specified criteria");
             }
-            catch (ArgumentException ex)
+            catch
             {
-                return CreateErrorResponse($"Invalid argument: {ex.Message}", "400");
-            }
-            catch (InvalidOperationException ex)
-            {
-                return CreateErrorResponse($"Operation failed: {ex.Message}", "500");
-            }
-            catch (Exception ex)
-            {
-                return CreateErrorResponse($"Unexpected error while retrieving reports: {ex.Message}", "500");
+                return CreateErrorResponse("An error occurred while retrieving reports", "500");
             }
         }
 
         public async Task<DemoTractor> RejectedRequestReportService(FilterModel filter)
         {
-            if (filter == null)
-                throw new ArgumentNullException(nameof(filter));
-
             try
             {
+                if (filter == null)
+                    throw new ArgumentNullException(nameof(filter));
+
                 ValidateFilterDates(filter);
                 var result = await _reportRepository.RejectedRequestReportRepo(filter);
 
@@ -67,27 +59,19 @@ namespace DealerSetu_Services.Services
 
                 return result;
             }
-            catch (ArgumentException)
+            catch
             {
-                throw;
-            }
-            catch (InvalidOperationException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Failed to retrieve rejected request reports: {ex.Message}", ex);
+                throw new InvalidOperationException("Failed to retrieve rejected request reports");
             }
         }
 
         public async Task<List<DealerstateModel>> NewDealerStatewiseReportService(int fy)
         {
-            if (fy < MIN_FISCAL_YEAR || fy > MAX_FISCAL_YEAR)
-                throw new ArgumentOutOfRangeException(nameof(fy), $"Fiscal year must be between {MIN_FISCAL_YEAR} and {MAX_FISCAL_YEAR}");
-
             try
             {
+                if (fy < MIN_FISCAL_YEAR || fy > MAX_FISCAL_YEAR)
+                    throw new ArgumentOutOfRangeException(nameof(fy), "Invalid fiscal year");
+
                 var result = await _reportRepository.NewDealerStatewiseReportRepo(fy);
 
                 if (result == null)
@@ -95,13 +79,9 @@ namespace DealerSetu_Services.Services
 
                 return result;
             }
-            catch (ArgumentOutOfRangeException)
+            catch
             {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Failed to retrieve state-wise dealer data for fiscal year {fy}: {ex.Message}", ex);
+                throw new InvalidOperationException("Failed to retrieve state-wise dealer data");
             }
         }
 
@@ -116,21 +96,13 @@ namespace DealerSetu_Services.Services
                 var (demoRequests, totalCount) = await _reportRepository.DemoTractorReportRepo(filter, pageIndex, pageSize);
 
                 if (demoRequests == null)
-                    return CreateErrorResponse("Repository returned null result", "500");
+                    return CreateErrorResponse("Unable to retrieve demo requests", "500");
 
                 return CreateSuccessResponse(demoRequests, totalCount, "Demo requests retrieved successfully", "No demo requests found for the specified criteria");
             }
-            catch (ArgumentException ex)
+            catch
             {
-                return CreateErrorResponse($"Invalid argument: {ex.Message}", "400");
-            }
-            catch (InvalidOperationException ex)
-            {
-                return CreateErrorResponse($"Operation failed: {ex.Message}", "500");
-            }
-            catch (Exception ex)
-            {
-                return CreateErrorResponse($"Unexpected error while retrieving demo requests: {ex.Message}", "500");
+                return CreateErrorResponse("An error occurred while retrieving demo requests", "500");
             }
         }
 
@@ -145,21 +117,13 @@ namespace DealerSetu_Services.Services
                 var (newDealerActivities, totalCount) = await _reportRepository.NewDealerActivityReportRepo(filter, pendingByHO, pageIndex, pageSize);
 
                 if (newDealerActivities == null)
-                    return CreateErrorResponse("Repository returned null result", "500");
+                    return CreateErrorResponse("Unable to retrieve new dealer activities", "500");
 
                 return CreateSuccessResponse(newDealerActivities, totalCount, "New dealer activities retrieved successfully", "No new dealer activities found for the specified criteria");
             }
-            catch (ArgumentException ex)
+            catch
             {
-                return CreateErrorResponse($"Invalid argument: {ex.Message}", "400");
-            }
-            catch (InvalidOperationException ex)
-            {
-                return CreateErrorResponse($"Operation failed: {ex.Message}", "500");
-            }
-            catch (Exception ex)
-            {
-                return CreateErrorResponse($"Unexpected error while retrieving new dealer activities: {ex.Message}", "500");
+                return CreateErrorResponse("An error occurred while retrieving new dealer activities", "500");
             }
         }
 
@@ -174,21 +138,13 @@ namespace DealerSetu_Services.Services
                 var (newDealerClaimActivities, totalCount) = await _reportRepository.NewDealerClaimReportRepo(filter, pageIndex, pageSize);
 
                 if (newDealerClaimActivities == null)
-                    return CreateErrorResponse("Repository returned null result", "500");
+                    return CreateErrorResponse("Unable to retrieve new dealer claim activities", "500");
 
                 return CreateSuccessResponse(newDealerClaimActivities, totalCount, "New dealer claim activities retrieved successfully", "No new dealer claim activities found for the specified criteria");
             }
-            catch (ArgumentException ex)
+            catch
             {
-                return CreateErrorResponse($"Invalid argument: {ex.Message}", "400");
-            }
-            catch (InvalidOperationException ex)
-            {
-                return CreateErrorResponse($"Operation failed: {ex.Message}", "500");
-            }
-            catch (Exception ex)
-            {
-                return CreateErrorResponse($"Unexpected error while retrieving new dealer claim activities: {ex.Message}", "500");
+                return CreateErrorResponse("An error occurred while retrieving new dealer claim activities", "500");
             }
         }
 
@@ -196,63 +152,101 @@ namespace DealerSetu_Services.Services
 
         private ServiceResponse ValidateInputs(FilterModel filter, int pageIndex, int pageSize)
         {
-            if (pageIndex < MIN_PAGE_INDEX)
-                return CreateErrorResponse($"Page index must be greater than or equal to {MIN_PAGE_INDEX}", "400");
-
-            if (pageSize < MIN_PAGE_SIZE || pageSize > MAX_PAGE_SIZE)
-                return CreateErrorResponse($"Page size must be between {MIN_PAGE_SIZE} and {MAX_PAGE_SIZE}", "400");
-
-            if (filter == null)
-                return CreateErrorResponse("Filter cannot be null", "400");
-
             try
             {
+                if (pageIndex < MIN_PAGE_INDEX)
+                    return CreateErrorResponse("Invalid page index", "400");
+
+                if (pageSize < MIN_PAGE_SIZE || pageSize > MAX_PAGE_SIZE)
+                    return CreateErrorResponse("Invalid page size", "400");
+
+                if (filter == null)
+                    return CreateErrorResponse("Filter cannot be null", "400");
+
                 ValidateFilterDates(filter);
                 return null;
             }
-            catch (ArgumentException ex)
+            catch
             {
-                return CreateErrorResponse(ex.Message, "400");
+                return CreateErrorResponse("Invalid input parameters", "400");
             }
         }
 
         private static void ValidateFilterDates(FilterModel filter)
         {
-            if (filter.From.HasValue && filter.To.HasValue && filter.From.Value > filter.To.Value)
-                throw new ArgumentException("From date cannot be greater than To date");
+            try
+            {
+                if (filter.From.HasValue && filter.To.HasValue && filter.From.Value > filter.To.Value)
+                    throw new ArgumentException("From date cannot be greater than To date");
+            }
+            catch
+            {
+                throw new ArgumentException("Invalid date range");
+            }
         }
 
         private static ServiceResponse CreateErrorResponse(string message, string code)
         {
-            return new ServiceResponse
+            try
             {
-                isError = true,
-                Error = message,
-                Message = "Operation failed",
-                Code = code,
-                Status = "Error",
-                result = null,
-                totalCount = 0
-            };
+                return new ServiceResponse
+                {
+                    isError = true,
+                    Error = message,
+                    Message = "Operation failed",
+                    Code = code,
+                    Status = "Error",
+                    result = null,
+                    totalCount = 0
+                };
+            }
+            catch
+            {
+                return new ServiceResponse
+                {
+                    isError = true,
+                    Error = "An error occurred",
+                    Message = "Operation failed",
+                    Code = "500",
+                    Status = "Error",
+                    result = null,
+                    totalCount = 0
+                };
+            }
         }
 
         private static ServiceResponse CreateSuccessResponse(object data, int totalCount, string successMessage, string noDataMessage)
         {
-            var count = data switch
+            try
             {
-                System.Collections.ICollection collection => collection.Count,
-                _ => totalCount
-            };
+                var count = data switch
+                {
+                    System.Collections.ICollection collection => collection.Count,
+                    _ => totalCount
+                };
 
-            return new ServiceResponse
+                return new ServiceResponse
+                {
+                    isError = false,
+                    result = data,
+                    totalCount = totalCount,
+                    Message = count > 0 ? successMessage : noDataMessage,
+                    Code = "200",
+                    Status = "Success"
+                };
+            }
+            catch
             {
-                isError = false,
-                result = data,
-                totalCount = totalCount,
-                Message = count > 0 ? successMessage : noDataMessage,
-                Code = "200",
-                Status = "Success"
-            };
+                return new ServiceResponse
+                {
+                    isError = false,
+                    result = data,
+                    totalCount = totalCount,
+                    Message = "Data retrieved",
+                    Code = "200",
+                    Status = "Success"
+                };
+            }
         }
 
         #endregion

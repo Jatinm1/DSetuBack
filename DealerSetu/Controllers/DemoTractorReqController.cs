@@ -131,7 +131,7 @@ namespace DealerSetu.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, new ServiceResponse
                 {
                     isError = true,
-                    Error = ex.Message,
+                    Error = "An unexpected error occurred",
                     Message = "An unexpected error occurred",
                     Status = "Error",
                     Code = "500"
@@ -225,7 +225,7 @@ namespace DealerSetu.Controllers
             {
                 _logger.LogError(ex, "Error in ApproveRejectDemoRequest for request ID: {ReqId}", request?.ReqId);
                 //_fileLogger.LogError("DemoRequestController", $"Error in ApproveRejectDemoRequest for request ID: {request?.ReqId}", ex);
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request");
             }
         }
 
@@ -246,8 +246,8 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError("NewDealerActivityController", "Error in UpdateClaim", ex);
-                return StatusCode(500, "An error occurred while Updating the claim.");
+                _logger.LogError(ex, "Error in UpdateDemoReq");
+                return StatusCode(500, "An error occurred while updating the request.");
             }
         }
 
@@ -275,6 +275,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in GetDemoActualClaimList");
                 //_fileLogger.LogError("DemoRequestController", "Error in GetDemoActualClaimList", ex);
                 return StatusCode(500, "An error occurred while fetching claim details.");
             }
@@ -367,13 +368,14 @@ namespace DealerSetu.Controllers
                 }
 
                 // Pass the DemoReqModel instead of DemoDocUploadModel to your service
-                var result = await _demoService.AddDemoActualClaimService(demoReqModel,request.BasicFlag);
+                var result = await _demoService.AddDemoActualClaimService(demoReqModel, request.BasicFlag);
                 return Ok(result);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in AddUpdateBasicClaim");
                 //_fileLogger.LogError("DemoRequestController", "Error in AddUpdateBasicClaim", ex);
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                return StatusCode(500, "An error occurred while processing your request");
             }
         }
 
@@ -479,13 +481,14 @@ namespace DealerSetu.Controllers
                 }
 
                 // Pass the DemoReqModel instead of DemoDocUploadModel to your service
-                var result = await _demoService.AddDemoActualClaimService(demoReqModel,request.BasicFlag);
+                var result = await _demoService.AddDemoActualClaimService(demoReqModel, request.BasicFlag);
                 return Ok(result);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in AddUpdateAllClaim");
                 //_fileLogger.LogError("DemoRequestController", "Error in AddUpdateAllClaim", ex);
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                return StatusCode(500, "An error occurred while processing your request");
             }
         }
 
@@ -539,7 +542,7 @@ namespace DealerSetu.Controllers
                 var demoReqModel = new DemoReqModel
                 {
                     DemoRequestId = request.RequestId,
-                    EmpNo = empNo,                    
+                    EmpNo = empNo,
                 };
 
                 // Only set non-file properties if they are provided
@@ -601,15 +604,16 @@ namespace DealerSetu.Controllers
                 }
 
                 // Call update service method instead of add
-                var result = await _demoService.UpdateDemoActualClaimService(demoReqModel,request.BasicFlag);
+                var result = await _demoService.UpdateDemoActualClaimService(demoReqModel, request.BasicFlag);
                 return Ok(result);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in UpdateDemoActualClaim");
                 //_fileLogger.LogError("DemoRequestController", "Error in UpdateDemoActualClaim", ex);
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                return StatusCode(500, "An error occurred while processing your request");
             }
-        }        
+        }
 
         [HttpPost("GetDemoTractorDoc")]
         public async Task<IActionResult> DemoTractorDoc([FromBody] DemoTractorDocReq request)
@@ -632,6 +636,7 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error in DemoTractorDoc");
                 //_fileLogger.LogError("DemoRequestController", "Error in DemoTractorDoc", ex);
                 return StatusCode(500, "An error occurred while fetching claim details.");
             }
@@ -639,7 +644,7 @@ namespace DealerSetu.Controllers
 
 
         [HttpPost("ApproveRejectDemoClaim")]
-        public async Task<IActionResult> ApproveRejectDemoClaim ([FromBody] DemoTractorApproveRejectRequest request)
+        public async Task<IActionResult> ApproveRejectDemoClaim([FromBody] DemoTractorApproveRejectRequest request)
         {
             try
             {
@@ -667,7 +672,7 @@ namespace DealerSetu.Controllers
             {
                 _logger.LogError(ex, "Error in ApproveRejectDemoRequest for request ID: {ReqId}", request?.ReqId);
                 //_fileLogger.LogError("DemoRequestController", $"Error in ApproveRejectDemoClaim for request ID: {request?.ReqId}", ex);
-                return BadRequest(ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request");
             }
         }
 
@@ -683,25 +688,33 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError("DemoTractorReqController", "Error in AddDemoRemarks", ex);
-                return StatusCode(500, "An error occurred while fetching claim details.");
+                _logger.LogError(ex, "Error in AddDemoRemarks");
+                return StatusCode(500, "An error occurred while processing your request.");
             }
         }
 
         private FilterModel CreateFilterModel(DemoTractorRequestModel request)
         {
-            return new FilterModel
+            try
             {
-                EmpNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo"),
-                RoleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId"),
-                State = request.State,
-                Status = request.Status,
-                RequestNo = request.RequestNo,
-                Fyear = request.Fyear,
-                From = request.From,
-                To = request.To,
-                Export = request.Export,
-            };
+                return new FilterModel
+                {
+                    EmpNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo"),
+                    RoleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId"),
+                    State = request.State,
+                    Status = request.Status,
+                    RequestNo = request.RequestNo,
+                    Fyear = request.Fyear,
+                    From = request.From,
+                    To = request.To,
+                    Export = request.Export,
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in CreateFilterModel");
+                return new FilterModel();
+            }
         }
     }
 }

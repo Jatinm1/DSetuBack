@@ -29,6 +29,10 @@ namespace DealerSetu_Data.Models.HelperModels
         //public int IsAbhar { get; set; } = 0;
         //public int HPCategory { get; set; }
 
+        public string? BrowserName { get; set; }
+        public string? BrowserVersion { get; set; }
+        public string? IpAddress { get; set; }
+
     }
 
     public class UserViewModel

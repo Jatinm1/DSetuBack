@@ -14,7 +14,7 @@ namespace DealerSetu_Services.IServices
     public interface ILoginService
     {
         Task<ServiceResponse> Login_Service(LoginModel loginModel);
-        Task<ServiceResponse> LDAPLoginService(LoginModel loginModel);
+        //Task<ServiceResponse> LDAPLoginService(LoginModel loginModel);
         Task<ServiceResponse> LogOutService(string empNo);
         Task<ServiceResponse> PendingCountService(FilterModel filter);
         Task<bool> UpdateLoginHeartbeatService(string empNo);

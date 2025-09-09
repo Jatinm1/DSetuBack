@@ -3,17 +3,15 @@ using DealerSetu_Services.IServices;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using ImageMagick;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace DealerSetu_Services.Services
 {
     /// <summary>
-    /// Azure Blob Storage service for file operations.
+    /// Azure Blob Storage service for file operations using Magick.NET.
     /// </summary>
     public class BlobStorageService : IBlobStorageService
     {
@@ -39,13 +37,8 @@ namespace DealerSetu_Services.Services
         }
 
         /// <summary>
-        /// Uploads a file to blob storage asynchronously.
+        /// Uploads a file to blob storage asynchronously after stripping EXIF/metadata.
         /// </summary>
-        /// <param name="file">The file to upload</param>
-        /// <returns>The generated file name</returns>
-        /// <exception cref="ArgumentNullException">Thrown when file is null</exception>
-        /// <exception cref="ArgumentException">Thrown when file is invalid</exception>
-        /// <exception cref="InvalidOperationException">Thrown when upload fails</exception>
         public async Task<string> UploadFileAsync(IFormFile file)
         {
             if (file == null)
@@ -61,31 +54,43 @@ namespace DealerSetu_Services.Services
 
             try
             {
-                // Generate a unique file name
                 fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
 
                 _logger.LogInformation("Starting file upload for {FileName} (Original: {OriginalFileName})",
                     fileName, file.FileName);
 
-                // Create blob client and container client
                 var blobServiceClient = new BlobServiceClient(_connectionString);
                 var containerClient = blobServiceClient.GetBlobContainerClient(_containerName);
-
-                // Create the container if it doesn't already exist
                 await containerClient.CreateIfNotExistsAsync();
 
-                // Get a reference to the blob
                 var blobClient = containerClient.GetBlobClient(fileName);
 
-                // Upload the file
-                using (var stream = file.OpenReadStream())
+                using (var inputStream = file.OpenReadStream())
+                using (var image = new MagickImage(inputStream))
                 {
-                    await blobClient.UploadAsync(stream, overwrite: true);
+                    // Strip ALL metadata (EXIF, ICC, IPTC, XMP, etc.)
+                    image.Strip();
+
+                    // Ensure good quality if saving as JPEG
+                    if (fileName.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                        fileName.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase))
+                    {
+                        image.Quality = 90;
+                    }
+
+                    using (var outputStream = new MemoryStream())
+                    {
+                        // Save in the same format as uploaded file
+                        var format = GetMagickFormat(file.FileName);
+                        image.Write(outputStream, format);
+
+                        outputStream.Position = 0;
+                        await blobClient.UploadAsync(outputStream, overwrite: true);
+                    }
                 }
 
                 _logger.LogInformation("Successfully uploaded file {FileName}", fileName);
 
-                // Return the blob file name
                 return fileName;
             }
             catch (Exception ex)
@@ -95,13 +100,19 @@ namespace DealerSetu_Services.Services
             }
         }
 
-        /// <summary>
-        /// Gets the URL for a blob file.
-        /// </summary>
-        /// <param name="fileName">The name of the blob file</param>
-        /// <returns>The blob URL</returns>
-        /// <exception cref="ArgumentException">Thrown when fileName is null or empty</exception>
-        /// <exception cref="InvalidOperationException">Thrown when URL retrieval fails</exception>
+        private MagickFormat GetMagickFormat(string fileName)
+        {
+            var ext = Path.GetExtension(fileName).ToLowerInvariant();
+            return ext switch
+            {
+                ".png" => MagickFormat.Png,
+                ".webp" => MagickFormat.WebP,
+                ".jpg" => MagickFormat.Jpeg,
+                ".jpeg" => MagickFormat.Jpeg,
+                _ => MagickFormat.Jpeg // fallback
+            };
+        }
+
         public string GetImageURL(string fileName)
         {
             if (string.IsNullOrWhiteSpace(fileName))
@@ -115,11 +126,7 @@ namespace DealerSetu_Services.Services
                 var containerClient = blobServiceClient.GetBlobContainerClient(_containerName);
                 var blobClient = containerClient.GetBlobClient(fileName);
 
-                var url = blobClient.Uri.ToString();
-
-                _logger.LogInformation("Successfully retrieved URL for blob {FileName}", fileName);
-
-                return url;
+                return blobClient.Uri.ToString();
             }
             catch (Exception ex)
             {
@@ -128,13 +135,6 @@ namespace DealerSetu_Services.Services
             }
         }
 
-        /// <summary>
-        /// Deletes a file from blob storage asynchronously.
-        /// </summary>
-        /// <param name="blobUrl">The URL of the blob to delete</param>
-        /// <returns>True if the blob was deleted, false if it didn't exist</returns>
-        /// <exception cref="ArgumentException">Thrown when blobUrl is invalid</exception>
-        /// <exception cref="InvalidOperationException">Thrown when deletion fails</exception>
         public async Task<bool> DeleteFileAsync(string blobUrl)
         {
             if (string.IsNullOrWhiteSpace(blobUrl))
@@ -144,7 +144,6 @@ namespace DealerSetu_Services.Services
 
             try
             {
-                // Extract the blob name from the URL
                 if (!Uri.TryCreate(blobUrl, UriKind.Absolute, out var uri))
                     throw new ArgumentException("Invalid blob URL format", nameof(blobUrl));
 
@@ -165,10 +164,6 @@ namespace DealerSetu_Services.Services
 
                 return result.Value;
             }
-            catch (ArgumentException)
-            {
-                throw;
-            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting blob {BlobName} from storage", blobName ?? blobUrl);
@@ -176,13 +171,6 @@ namespace DealerSetu_Services.Services
             }
         }
 
-        /// <summary>
-        /// Checks if a blob exists in storage asynchronously.
-        /// </summary>
-        /// <param name="blobUrl">The URL of the blob to check</param>
-        /// <returns>True if the blob exists, false otherwise</returns>
-        /// <exception cref="ArgumentException">Thrown when blobUrl is invalid</exception>
-        /// <exception cref="InvalidOperationException">Thrown when existence check fails</exception>
         public async Task<bool> BlobExistsAsync(string blobUrl)
         {
             if (string.IsNullOrWhiteSpace(blobUrl))
@@ -192,7 +180,6 @@ namespace DealerSetu_Services.Services
 
             try
             {
-                // Extract the blob name from the URL
                 if (!Uri.TryCreate(blobUrl, UriKind.Absolute, out var uri))
                     throw new ArgumentException("Invalid blob URL format", nameof(blobUrl));
 
@@ -212,10 +199,6 @@ namespace DealerSetu_Services.Services
                 _logger.LogInformation("Blob existence check for {BlobName}: {Exists}", blobName, response.Value);
 
                 return response.Value;
-            }
-            catch (ArgumentException)
-            {
-                throw;
             }
             catch (Exception ex)
             {

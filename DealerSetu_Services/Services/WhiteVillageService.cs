@@ -46,10 +46,17 @@ namespace DealerSetu_Services.Services
             IFileValidationService fileValidationService,
             Utility utility)
         {
-            _whiteVillageRepository = whiteVillageRepository ?? throw new ArgumentNullException(nameof(whiteVillageRepository));
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            _fileValidationService = fileValidationService ?? throw new ArgumentNullException(nameof(fileValidationService));
-            _utility = utility ?? throw new ArgumentNullException(nameof(utility));
+            try
+            {
+                _whiteVillageRepository = whiteVillageRepository ?? throw new ArgumentNullException(nameof(whiteVillageRepository));
+                _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+                _fileValidationService = fileValidationService ?? throw new ArgumentNullException(nameof(fileValidationService));
+                _utility = utility ?? throw new ArgumentNullException(nameof(utility));
+            }
+            catch (Exception)
+            {
+                throw new InvalidOperationException("Configuration error occurred");
+            }
         }
 
         #endregion
@@ -68,9 +75,9 @@ namespace DealerSetu_Services.Services
                 var result = await _whiteVillageRepository.GetWhiteListingRepo();
                 return result ?? Enumerable.Empty<WhiteVillageModel>();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                throw new InvalidOperationException("Failed to retrieve white listing data", ex);
+                throw new InvalidOperationException("Failed to retrieve white listing data");
             }
         }
 
@@ -92,12 +99,12 @@ namespace DealerSetu_Services.Services
                     Code = "200"
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new ServiceResponse
                 {
                     isError = true,
-                    Error = ex.Message,
+                    Error = "Operation failed",
                     Message = "Error retrieving states",
                     Status = "Error",
                     Code = "500"
@@ -116,23 +123,23 @@ namespace DealerSetu_Services.Services
         /// <exception cref="ArgumentNullException">Thrown when required parameters are null</exception>
         public async Task<ServiceResponse> UploadWhiteVillageFileService(IFormFile whiteVillageFile, string stateId, string empNo)
         {
-            if (whiteVillageFile == null)
-            {
-                return CreateErrorResponse("400", "File is required");
-            }
-
-            if (string.IsNullOrWhiteSpace(stateId))
-            {
-                return CreateErrorResponse("400", "State ID is required");
-            }
-
-            if (string.IsNullOrWhiteSpace(empNo))
-            {
-                return CreateErrorResponse("400", "Employee number is required");
-            }
-
             try
             {
+                if (whiteVillageFile == null)
+                {
+                    return CreateErrorResponse("400", "File is required");
+                }
+
+                if (string.IsNullOrWhiteSpace(stateId))
+                {
+                    return CreateErrorResponse("400", "State ID is required");
+                }
+
+                if (string.IsNullOrWhiteSpace(empNo))
+                {
+                    return CreateErrorResponse("400", "Employee number is required");
+                }
+
                 // Validate file size
                 var fileSizeValidation = ValidateFileSize(whiteVillageFile);
                 if ((bool)fileSizeValidation.isError)
@@ -159,11 +166,11 @@ namespace DealerSetu_Services.Services
                 if ((bool)filenameValidation.isError)
                 {
                     return filenameValidation;
-                }               
+                }
 
                 // Save metadata
                 var fiscalYear = DetermineFiscalYear();
-                var (newFileName,saveResult) = await _whiteVillageRepository.SaveWhiteVillageFileMetadata(
+                var (newFileName, saveResult) = await _whiteVillageRepository.SaveWhiteVillageFileMetadata(
                     whiteVillageFile.FileName, stateId, empNo, fiscalYear);
 
                 // Upload to blob storage
@@ -177,14 +184,14 @@ namespace DealerSetu_Services.Services
                     Message = saveResult == "200" ? "File uploaded successfully" : "Failed to save file metadata."
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new ServiceResponse
                 {
                     isError = true,
                     Status = "Error",
                     Code = "500",
-                    Error = ex.Message,
+                    Error = "Operation failed",
                     Message = "An unexpected error occurred during file upload"
                 };
             }
@@ -200,13 +207,13 @@ namespace DealerSetu_Services.Services
         /// <exception cref="InvalidOperationException">Thrown when storage configuration is invalid</exception>
         public async Task<string> WhiteVillageDownloadService(string fileName)
         {
-            if (string.IsNullOrWhiteSpace(fileName))
-            {
-                throw new ArgumentException("Filename cannot be null or empty", nameof(fileName));
-            }
-
             try
             {
+                if (string.IsNullOrWhiteSpace(fileName))
+                {
+                    throw new ArgumentException("Filename cannot be null or empty", nameof(fileName));
+                }
+
                 var blobUrlFromRepo = await _whiteVillageRepository.WhiteVillageDownloadRepo(fileName);
 
                 if (string.IsNullOrWhiteSpace(blobUrlFromRepo))
@@ -228,13 +235,9 @@ namespace DealerSetu_Services.Services
                 var sasToken = _utility.GenerateSasToken(blob);
                 return $"{blob.Uri}?{sasToken}";
             }
-            catch (FileNotFoundException)
+            catch (Exception)
             {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Failed to generate download URL for file '{fileName}'", ex);
+                throw new InvalidOperationException("Failed to generate download URL");
             }
         }
 
@@ -284,9 +287,9 @@ namespace DealerSetu_Services.Services
                               .Select(x => x.Name)
                               .ToList();
             }
-            catch (Exception ex) when (!(ex is InvalidOperationException))
+            catch (Exception)
             {
-                throw new InvalidOperationException("Failed to list blobs in container", ex);
+                throw new InvalidOperationException("Failed to list blobs in container");
             }
         }
 
@@ -299,13 +302,13 @@ namespace DealerSetu_Services.Services
         /// <exception cref="InvalidOperationException">Thrown when storage configuration is invalid or deletion fails</exception>
         public async Task<bool> DeleteBlobFile(string fileName)
         {
-            if (string.IsNullOrWhiteSpace(fileName))
-            {
-                throw new ArgumentException("Filename cannot be null or empty", nameof(fileName));
-            }
-
             try
             {
+                if (string.IsNullOrWhiteSpace(fileName))
+                {
+                    throw new ArgumentException("Filename cannot be null or empty", nameof(fileName));
+                }
+
                 var connectionString = GetConnectionString();
                 var (container, _) = CreateBlobClientAndContainer(connectionString);
 
@@ -324,9 +327,9 @@ namespace DealerSetu_Services.Services
                 await blob.DeleteAsync();
                 return true;
             }
-            catch (Exception ex) when (!(ex is ArgumentException || ex is InvalidOperationException))
+            catch (Exception)
             {
-                throw new InvalidOperationException($"Failed to delete file '{fileName}'", ex);
+                throw new InvalidOperationException("Failed to delete file");
             }
         }
 
@@ -341,9 +344,16 @@ namespace DealerSetu_Services.Services
         /// <returns>Fiscal year in format "FYxx"</returns>
         private static string DetermineFiscalYear()
         {
-            var now = DateTime.Now;
-            var year = now.Year;
-            return now.Month >= 4 ? $"FY{(year + 1) % 100:00}" : $"FY{year % 100:00}";
+            try
+            {
+                var now = DateTime.Now;
+                var year = now.Year;
+                return now.Month >= 4 ? $"FY{(year + 1) % 100:00}" : $"FY{year % 100:00}";
+            }
+            catch (Exception)
+            {
+                return "FY00";
+            }
         }
 
         /// <summary>
@@ -354,14 +364,21 @@ namespace DealerSetu_Services.Services
         /// <returns>URL of the uploaded blob</returns>
         private async Task<string> UploadFileToBlob(IFormFile file, string fileName)
         {
-            var connectionString = GetConnectionString();
-            var (container, _) = CreateBlobClientAndContainer(connectionString);
-            var blockBlob = container.GetBlockBlobReference(fileName);
+            try
+            {
+                var connectionString = GetConnectionString();
+                var (container, _) = CreateBlobClientAndContainer(connectionString);
+                var blockBlob = container.GetBlockBlobReference(fileName);
 
-            using var data = file.OpenReadStream();
-            await blockBlob.UploadFromStreamAsync(data);
+                using var data = file.OpenReadStream();
+                await blockBlob.UploadFromStreamAsync(data);
 
-            return blockBlob.Uri.ToString();
+                return blockBlob.Uri.ToString();
+            }
+            catch (Exception)
+            {
+                throw new InvalidOperationException("Failed to upload file to blob storage");
+            }
         }
 
         /// <summary>
@@ -369,11 +386,18 @@ namespace DealerSetu_Services.Services
         /// </summary>
         private static ServiceResponse ValidateFileSize(IFormFile file)
         {
-            if (file.Length > MAX_FILE_SIZE_BYTES)
+            try
             {
-                return CreateErrorResponse("400", "File size exceeds the maximum allowed size of 10MB");
+                if (file.Length > MAX_FILE_SIZE_BYTES)
+                {
+                    return CreateErrorResponse("400", "File size exceeds the maximum allowed size of 10MB");
+                }
+                return CreateSuccessResponse();
             }
-            return CreateSuccessResponse();
+            catch (Exception)
+            {
+                return CreateErrorResponse("400", "File validation failed");
+            }
         }
 
         /// <summary>
@@ -381,15 +405,22 @@ namespace DealerSetu_Services.Services
         /// </summary>
         private async Task<ServiceResponse> ValidateFileType(IFormFile file)
         {
-            var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
-            var magicNumberType = MagicNumberClass.MagicNumber(file);
-
-            if (string.IsNullOrEmpty(magicNumberType) || !VALID_EXTENSIONS.Contains(fileExtension))
+            try
             {
-                return CreateErrorResponse("400", "Invalid file type. Only Excel files (.xlsx, .xls, .csv) are allowed");
-            }
+                var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+                var magicNumberType = MagicNumberClass.MagicNumber(file);
 
-            return CreateSuccessResponse();
+                if (string.IsNullOrEmpty(magicNumberType) || !VALID_EXTENSIONS.Contains(fileExtension))
+                {
+                    return CreateErrorResponse("400", "Invalid file type. Only Excel files (.xlsx, .xls, .csv) are allowed");
+                }
+
+                return CreateSuccessResponse();
+            }
+            catch (Exception)
+            {
+                return CreateErrorResponse("400", "File type validation failed");
+            }
         }
 
         /// <summary>
@@ -397,20 +428,27 @@ namespace DealerSetu_Services.Services
         /// </summary>
         private async Task<ServiceResponse> ValidateFileContent(IFormFile file)
         {
-            var validationResult = await _fileValidationService.ValidateFile(file);
-
-            if (validationResult.isError == true)
+            try
             {
-                return new ServiceResponse
-                {
-                    isError = true,
-                    Status = "Failure",
-                    Code = "400",
-                    Message = validationResult.Message ?? "File content validation failed"
-                };
-            }
+                var validationResult = await _fileValidationService.ValidateFile(file);
 
-            return CreateSuccessResponse();
+                if (validationResult.isError == true)
+                {
+                    return new ServiceResponse
+                    {
+                        isError = true,
+                        Status = "Failure",
+                        Code = "400",
+                        Message = validationResult.Message ?? "File content validation failed"
+                    };
+                }
+
+                return CreateSuccessResponse();
+            }
+            catch (Exception)
+            {
+                return CreateErrorResponse("400", "File content validation failed");
+            }
         }
 
         /// <summary>
@@ -418,17 +456,24 @@ namespace DealerSetu_Services.Services
         /// </summary>
         private static ServiceResponse ValidateFileName(string fileName)
         {
-            if (string.IsNullOrWhiteSpace(fileName))
+            try
             {
-                return CreateErrorResponse("400", "Filename cannot be empty");
-            }
+                if (string.IsNullOrWhiteSpace(fileName))
+                {
+                    return CreateErrorResponse("400", "Filename cannot be empty");
+                }
 
-            if (fileName.Count(c => c == '.') > 1)
+                if (fileName.Count(c => c == '.') > 1)
+                {
+                    return CreateErrorResponse("400", "File name cannot contain multiple periods (.) except for the extension");
+                }
+
+                return CreateSuccessResponse();
+            }
+            catch (Exception)
             {
-                return CreateErrorResponse("400", "File name cannot contain multiple periods (.) except for the extension");
+                return CreateErrorResponse("400", "Filename validation failed");
             }
-
-            return CreateSuccessResponse();
         }
 
         /// <summary>
@@ -436,12 +481,19 @@ namespace DealerSetu_Services.Services
         /// </summary>
         private string GetConnectionString()
         {
-            var connectionString = _configuration["AzureBlobStorage:StorageAccount"];
-            if (string.IsNullOrWhiteSpace(connectionString))
+            try
             {
-                throw new InvalidOperationException("Azure Blob Storage connection string is not configured");
+                var connectionString = _configuration["AzureBlobStorage:StorageAccount"];
+                if (string.IsNullOrWhiteSpace(connectionString))
+                {
+                    throw new InvalidOperationException("Azure Blob Storage connection string is not configured");
+                }
+                return connectionString;
             }
-            return connectionString;
+            catch (Exception)
+            {
+                throw new InvalidOperationException("Configuration error occurred");
+            }
         }
 
         /// <summary>
@@ -449,12 +501,19 @@ namespace DealerSetu_Services.Services
         /// </summary>
         private string GetContainerName()
         {
-            var containerName = _configuration["AzureBlobStorage:ContainerName"];
-            if (string.IsNullOrWhiteSpace(containerName))
+            try
             {
-                throw new InvalidOperationException("Azure Blob Storage container name is not configured");
+                var containerName = _configuration["AzureBlobStorage:ContainerName"];
+                if (string.IsNullOrWhiteSpace(containerName))
+                {
+                    throw new InvalidOperationException("Azure Blob Storage container name is not configured");
+                }
+                return containerName;
             }
-            return containerName;
+            catch (Exception)
+            {
+                throw new InvalidOperationException("Configuration error occurred");
+            }
         }
 
         /// <summary>
@@ -462,10 +521,17 @@ namespace DealerSetu_Services.Services
         /// </summary>
         private (CloudBlobContainer container, CloudBlobClient blobClient) CreateBlobClientAndContainer(string connectionString)
         {
-            var storageAccount = CloudStorageAccount.Parse(connectionString);
-            var blobClient = storageAccount.CreateCloudBlobClient();
-            var container = blobClient.GetContainerReference(GetContainerName());
-            return (container, blobClient);
+            try
+            {
+                var storageAccount = CloudStorageAccount.Parse(connectionString);
+                var blobClient = storageAccount.CreateCloudBlobClient();
+                var container = blobClient.GetContainerReference(GetContainerName());
+                return (container, blobClient);
+            }
+            catch (Exception)
+            {
+                throw new InvalidOperationException("Storage configuration error occurred");
+            }
         }
 
         /// <summary>
@@ -473,7 +539,14 @@ namespace DealerSetu_Services.Services
         /// </summary>
         private static string ExtractBlobName(Uri blobUri, Uri containerUri)
         {
-            return blobUri.ToString().Substring(containerUri.ToString().Length + 1);
+            try
+            {
+                return blobUri.ToString().Substring(containerUri.ToString().Length + 1);
+            }
+            catch (Exception)
+            {
+                throw new InvalidOperationException("Failed to extract blob name");
+            }
         }
 
         /// <summary>

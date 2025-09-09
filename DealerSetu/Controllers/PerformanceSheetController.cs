@@ -40,18 +40,25 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                ValidateModel();
-                var empNo = GetAuthenticatedEmpNo();
-                var dealers = await _performanceSheetService.GetTrackingDealersServiceAsync(request, empNo);
-                return Ok(dealers);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Unauthorized("User not authenticated");
-            }
-            catch (ArgumentException)
-            {
-                return BadRequest(ModelState);
+                try
+                {
+                    ValidateModel();
+                    var empNo = GetAuthenticatedEmpNo();
+                    var dealers = await _performanceSheetService.GetTrackingDealersServiceAsync(request, empNo);
+                    return Ok(dealers);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return Unauthorized("User not authenticated");
+                }
+                catch (ArgumentException)
+                {
+                    return BadRequest(ModelState);
+                }
+                catch
+                {
+                    return StatusCode(500, "An internal server error occurred");
+                }
             }
             catch
             {
@@ -64,18 +71,25 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                ValidateModel();
-                var empNo = GetAuthenticatedEmpNo();
-                var dealers = await _performanceSheetService.GetPendingDealersServiceAsync(request, empNo);
-                return Ok(dealers);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Unauthorized("User not authenticated");
-            }
-            catch (ArgumentException)
-            {
-                return BadRequest(ModelState);
+                try
+                {
+                    ValidateModel();
+                    var empNo = GetAuthenticatedEmpNo();
+                    var dealers = await _performanceSheetService.GetPendingDealersServiceAsync(request, empNo);
+                    return Ok(dealers);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return Unauthorized("User not authenticated");
+                }
+                catch (ArgumentException)
+                {
+                    return BadRequest(ModelState);
+                }
+                catch
+                {
+                    return StatusCode(500, "An internal server error occurred");
+                }
             }
             catch
             {
@@ -88,13 +102,20 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                var empNo = GetAuthenticatedEmpNo();
-                var dealers = await _performanceSheetService.GetDealerListServiceAsync(empNo);
-                return Ok(dealers);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Unauthorized("User not authenticated");
+                try
+                {
+                    var empNo = GetAuthenticatedEmpNo();
+                    var dealers = await _performanceSheetService.GetDealerListServiceAsync(empNo);
+                    return Ok(dealers);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return Unauthorized("User not authenticated");
+                }
+                catch
+                {
+                    return StatusCode(500, "An internal server error occurred");
+                }
             }
             catch
             {
@@ -107,16 +128,23 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                var result = await _performanceSheetService.GetPerformanceSheetServiceAsync(request);
-                return result == null ? NotFound(new { message = "Performance sheet not found" }) : Ok(result);
-            }
-            catch (ArgumentException)
-            {
-                return BadRequest(new { message = "Invalid parameters provided" });
+                try
+                {
+                    var result = await _performanceSheetService.GetPerformanceSheetServiceAsync(request);
+                    return result == null ? NotFound(new { message = "Performance sheet not found" }) : Ok(result);
+                }
+                catch (ArgumentException)
+                {
+                    return BadRequest(new { message = "Invalid parameters provided" });
+                }
+                catch
+                {
+                    return StatusCode(500, new { message = "An error occurred while processing your request" });
+                }
             }
             catch
             {
-                return StatusCode(500, new { message = "An error occurred while processing your request" });
+                return StatusCode(500, new { message = "An internal server error occurred" });
             }
         }
 
@@ -125,16 +153,23 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                var result = await _performanceSheetService.GetDealerBusinessPlanServiceAsync(request);
-                return result == null ? NotFound(new { message = "Business Plan not found" }) : Ok(result);
-            }
-            catch (ArgumentException)
-            {
-                return BadRequest(new { message = "Invalid parameters provided" });
+                try
+                {
+                    var result = await _performanceSheetService.GetDealerBusinessPlanServiceAsync(request);
+                    return result == null ? NotFound(new { message = "Business Plan not found" }) : Ok(result);
+                }
+                catch (ArgumentException)
+                {
+                    return BadRequest(new { message = "Invalid parameters provided" });
+                }
+                catch
+                {
+                    return StatusCode(500, new { message = "An error occurred while processing your request" });
+                }
             }
             catch
             {
-                return StatusCode(500, new { message = "An error occurred while processing your request" });
+                return StatusCode(500, new { message = "An internal server error occurred" });
             }
         }
 
@@ -143,21 +178,28 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                request.CreatedBy = GetAuthenticatedEmpNo();
-                var result = await _performanceSheetService.SubmitDealerBusinessPlanServiceAsync(request);
-                return result == null ? NotFound(new { message = "Some Error has occured" }) : Ok(result);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Unauthorized("User not authenticated");
-            }
-            catch (ArgumentException)
-            {
-                return BadRequest(new { message = "Invalid parameters provided" });
+                try
+                {
+                    request.CreatedBy = GetAuthenticatedEmpNo();
+                    var result = await _performanceSheetService.SubmitDealerBusinessPlanServiceAsync(request);
+                    return result == null ? NotFound(new { message = "Some Error has occured" }) : Ok(result);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return Unauthorized("User not authenticated");
+                }
+                catch (ArgumentException)
+                {
+                    return BadRequest(new { message = "Invalid parameters provided" });
+                }
+                catch
+                {
+                    return StatusCode(500, new { message = "An error occurred while processing your request" });
+                }
             }
             catch
             {
-                return StatusCode(500, new { message = "An error occurred while processing your request" });
+                return StatusCode(500, new { message = "An internal server error occurred" });
             }
         }
 
@@ -173,17 +215,24 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                ValidateDealerRequest(request);
-                var result = await _performanceSheetService.GetDealerDetailsServiceAsync(request);
-                return result == null ? NotFound("Dealer details not found.") : Ok(result);
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
+                try
+                {
+                    ValidateDealerRequest(request);
+                    var result = await _performanceSheetService.GetDealerDetailsServiceAsync(request);
+                    return result == null ? NotFound("Dealer details not found.") : Ok(result);
+                }
+                catch (ArgumentException ex)
+                {
+                    return BadRequest(ex.Message);
+                }
+                catch
+                {
+                    return StatusCode(500, "An error occurred while processing your request.");
+                }
             }
             catch
             {
-                return StatusCode(500, "An error occurred while processing your request.");
+                return StatusCode(500, "An internal server error occurred.");
             }
         }
 
@@ -192,19 +241,26 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(request.FYear))
-                    throw new ArgumentException("DealerEmpId, Month, and FYear are required parameters.");
+                try
+                {
+                    if (string.IsNullOrWhiteSpace(request.FYear))
+                        throw new ArgumentException("DealerEmpId, Month, and FYear are required parameters.");
 
-                var result = await _performanceSheetService.GetActionPlanDetailServiceAsync(request);
-                return result == null ? NotFound("Action plan details not found.") : Ok(result);
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
+                    var result = await _performanceSheetService.GetActionPlanDetailServiceAsync(request);
+                    return result == null ? NotFound("Action plan details not found.") : Ok(result);
+                }
+                catch (ArgumentException ex)
+                {
+                    return BadRequest(ex.Message);
+                }
+                catch
+                {
+                    return StatusCode(500, "An error occurred while processing your request.");
+                }
             }
             catch
             {
-                return StatusCode(500, "An error occurred while processing your request.");
+                return StatusCode(500, "An internal server error occurred.");
             }
         }
 
@@ -213,21 +269,28 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                request.CreatedBy = GetAuthenticatedEmpNo();
-                var result = await _performanceSheetService.SubmitActionPlanServiceAsync(request);
-                return result == null ? NotFound("Action Plan not submitted.") : Ok(result);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Unauthorized("User not authenticated");
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
+                try
+                {
+                    request.CreatedBy = GetAuthenticatedEmpNo();
+                    var result = await _performanceSheetService.SubmitActionPlanServiceAsync(request);
+                    return result == null ? NotFound("Action Plan not submitted.") : Ok(result);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return Unauthorized("User not authenticated");
+                }
+                catch (ArgumentException ex)
+                {
+                    return BadRequest(ex.Message);
+                }
+                catch
+                {
+                    return StatusCode(500, "An error occurred while processing your request.");
+                }
             }
             catch
             {
-                return StatusCode(500, "An error occurred while processing your request.");
+                return StatusCode(500, "An internal server error occurred.");
             }
         }
 
@@ -236,22 +299,27 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                var empNo = GetAuthenticatedEmpNo();
-                var result = await _performanceSheetService.SubmitPerformanceSheetServiceAsync(request, empNo);
-                return result == null
-                    ? StatusCode(500, new { message = "An error occurred while updating Performance Sheet" })
-                    : Ok(result);
+                try
+                {
+                    var empNo = GetAuthenticatedEmpNo();
+                    var result = await _performanceSheetService.SubmitPerformanceSheetServiceAsync(request, empNo);
+                    return result == null
+                        ? StatusCode(500, new { message = "An error occurred while updating Performance Sheet" })
+                        : Ok(result);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return Unauthorized("User not authenticated");
+                }
+                catch (Exception ex)
+                {
+                    return BadRequest(new { Success = false, Message = ex.Message });
+                }
             }
-            catch (UnauthorizedAccessException)
+            catch
             {
-                return Unauthorized("User not authenticated");
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Success = false, Message = ex.Message });
+                return StatusCode(500, new { message = "An internal server error occurred" });
             }
         }
-
-
     }
 }

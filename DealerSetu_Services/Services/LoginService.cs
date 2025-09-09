@@ -47,12 +47,19 @@ namespace DealerSetu_Services.Services
             IHttpContextAccessor httpContextAccessor,
             ILogger<LoginService> logger)
         {
-            _loginRepo = loginRepo ?? throw new ArgumentNullException(nameof(loginRepo));
-            _jwtTokenGenerator = jwtTokenGenerator ?? throw new ArgumentNullException(nameof(jwtTokenGenerator));
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            _utility = utility ?? throw new ArgumentNullException(nameof(utility));
-            _httpContextAccessor = httpContextAccessor;
-            _logger = logger;
+            try
+            {
+                _loginRepo = loginRepo ?? throw new ArgumentNullException(nameof(loginRepo));
+                _jwtTokenGenerator = jwtTokenGenerator ?? throw new ArgumentNullException(nameof(jwtTokenGenerator));
+                _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+                _utility = utility ?? throw new ArgumentNullException(nameof(utility));
+                _httpContextAccessor = httpContextAccessor;
+                _logger = logger;
+            }
+            catch
+            {
+                throw new ArgumentNullException("Service initialization failed");
+            }
         }
 
         #endregion
@@ -67,12 +74,12 @@ namespace DealerSetu_Services.Services
         /// <returns>True if authentication is successful, false otherwise</returns>
         public async Task<bool> isLDAPAuthAsync(string userName, string password)
         {
-            string escapedUserName = _utility.EscapeLDAPUsername(userName);
-            if (string.IsNullOrWhiteSpace(escapedUserName) || string.IsNullOrWhiteSpace(password))
-                return false;
-
             try
             {
+                string escapedUserName = _utility.EscapeLDAPUsername(userName);
+                if (string.IsNullOrWhiteSpace(escapedUserName) || string.IsNullOrWhiteSpace(password))
+                    return false;
+
                 // Get the current domain user (e.g., DOMAIN\username).
                 string domainUser = System.Security.Principal.WindowsIdentity.GetCurrent().Name;
 
@@ -123,13 +130,13 @@ namespace DealerSetu_Services.Services
         /// <returns>Service response containing pending counts or error information</returns>
         public async Task<ServiceResponse> PendingCountService(FilterModel filter)
         {
-            if (filter == null)
-            {
-                return CreateErrorResponse("Filter cannot be null", "400");
-            }
-
             try
             {
+                if (filter == null)
+                {
+                    return CreateErrorResponse("Filter cannot be null", "400");
+                }
+
                 var pendingCounts = await _loginRepo.PendingCountRepo(filter.EmpNo, filter.RoleId);
 
                 return new ServiceResponse
@@ -141,13 +148,9 @@ namespace DealerSetu_Services.Services
                     Code = "200"
                 };
             }
-            catch (Exception ex)
+            catch
             {
-                //----Development----
-                //return CreateErrorResponse($"Error retrieving pending counts: {ex.Message}", "500", ex.Message); 
-
-                //----Production----
-                return CreateErrorResponse("Error retrieving pending counts", "500"); 
+                return CreateErrorResponse("Service temporarily unavailable", "500");
             }
         }
 
@@ -158,30 +161,23 @@ namespace DealerSetu_Services.Services
         /// <returns>Service response containing user information and JWT token or error details</returns>
         public async Task<ServiceResponse> Login_Service(LoginModel loginModel)
         {
-            var validationResult = ValidateLoginModel(loginModel);
-            if (!validationResult.IsValid)
-            {
-                return validationResult.Response;
-            }
-
             try
             {
+                var validationResult = ValidateLoginModel(loginModel);
+                if (!validationResult.IsValid)
+                {
+                    return validationResult.Response;
+                }
+
                 var result = await _loginRepo.LoginRepo(loginModel);
 
-                return await ProcessLoginResult(result);
+                return await ProcessLoginResult(result, loginModel);
             }
-            catch (Exception ex)
+            catch
             {
-                //----Development----
-                //return CreateErrorResponse(
-                //    "System cannot find the combination of this username and password, please try again",
-                //    "400",
-                //    ex.Message); 
-
-                //----Production----
                 return CreateErrorResponse(
                     "Username or Password is Incorrect, please try again",
-                    "400"); 
+                    "400");
             }
         }
 
@@ -190,41 +186,34 @@ namespace DealerSetu_Services.Services
         /// </summary>
         /// <param name="loginModel">Login credentials containing username and password</param>
         /// <returns>Service response containing user information and JWT token or error details</returns>
-        public async Task<ServiceResponse> LDAPLoginService(LoginModel loginModel)
-        {
-            var validationResult = ValidateLoginModel(loginModel);
-            if (!validationResult.IsValid)
-            {
-                return validationResult.Response;
-            }
+        //public async Task<ServiceResponse> LDAPLoginService(LoginModel loginModel)
+        //{
+        //    try
+        //    {
+        //        var validationResult = ValidateLoginModel(loginModel);
+        //        if (!validationResult.IsValid)
+        //        {
+        //            return validationResult.Response;
+        //        }
 
-            try
-            {
-                var ldapAuth = await isLDAPAuthAsync(loginModel.EmpNo, loginModel.Password);
+        //        var ldapAuth = await isLDAPAuthAsync(loginModel.EmpNo, loginModel.Password);
 
-                if (!ldapAuth)
-                {
-                    return CreateErrorResponse("Unauthorized Access", "401");
-                }
+        //        if (!ldapAuth)
+        //        {
+        //            return CreateErrorResponse("Unauthorized Access", "401");
+        //        }
 
-                var result = await _loginRepo.LDAPLoginRepo(loginModel, true);
+        //        var result = await _loginRepo.LDAPLoginRepo(loginModel, true);
 
-                return await ProcessLoginResult(result);
-            }
-            catch (Exception ex)
-            {
-                //----Development----
-                //return CreateErrorResponse(
-                //    "System cannot find the combination of this username and password, please try again",
-                //    "400",
-                //    ex.Message); 
-
-                //----Production----
-                return CreateErrorResponse(
-                    "System cannot find the combination of this username and password, please try again",
-                    "400"); 
-            }
-        }
+        //        return await ProcessLoginResult(result);
+        //    }
+        //    catch
+        //    {
+        //        return CreateErrorResponse(
+        //            "System cannot find the combination of this username and password, please try again",
+        //            "400"); 
+        //    }
+        //}
 
         /// <summary>
         /// Logs out a user by their employee number.
@@ -233,13 +222,13 @@ namespace DealerSetu_Services.Services
         /// <returns>Service response indicating success or failure of logout operation</returns>
         public async Task<ServiceResponse> LogOutService(string empNo)
         {
-            if (string.IsNullOrWhiteSpace(empNo))
-            {
-                return CreateErrorResponse("Employee number is required", "400");
-            }
-
             try
             {
+                if (string.IsNullOrWhiteSpace(empNo))
+                {
+                    return CreateErrorResponse("Employee number is required", "400");
+                }
+
                 var logoutResult = await _loginRepo.LogoutRepo(empNo);
 
                 // Clear all cookies - both HTTP-only and regular cookies
@@ -253,15 +242,12 @@ namespace DealerSetu_Services.Services
                     isError = logoutResult.Code != "200"
                 };
             }
-            catch (Exception ex)
+            catch
             {
                 // Still clear cookies even if database operation fails
                 ClearAllAuthCookies();
 
-                //----Development----
-                //return CreateErrorResponse($"Failed to logout: {ex.Message}", "500", ex.Message);
-                //----Production----
-                return CreateErrorResponse("Failed to logout", "500");
+                return CreateErrorResponse("Service temporarily unavailable", "500");
             }
         }
 
@@ -272,11 +258,11 @@ namespace DealerSetu_Services.Services
         /// <returns>True if heartbeat update was successful, false otherwise</returns>
         public async Task<bool> UpdateLoginHeartbeatService(string empNo)
         {
-            if (string.IsNullOrWhiteSpace(empNo))
-                return false;
-
             try
             {
+                if (string.IsNullOrWhiteSpace(empNo))
+                    return false;
+
                 return await _loginRepo.UpdateLoginHeartBeatRepo(empNo);
             }
             catch
@@ -292,11 +278,11 @@ namespace DealerSetu_Services.Services
         /// <returns>True if heartbeat update was successful, false otherwise</returns>
         public async Task<bool> UpdateRegularHeartbeatService(string empNo)
         {
-            if (string.IsNullOrWhiteSpace(empNo))
-                return false;
-
             try
             {
+                if (string.IsNullOrWhiteSpace(empNo))
+                    return false;
+
                 return await _loginRepo.UpdateRegularHeartBeatRepo(empNo);
             }
             catch
@@ -316,22 +302,29 @@ namespace DealerSetu_Services.Services
         /// <returns>Validation result with success status and response if invalid</returns>
         private (bool IsValid, ServiceResponse Response) ValidateLoginModel(LoginModel loginModel)
         {
-            if (loginModel == null)
+            try
             {
-                return (false, CreateErrorResponse("Login model cannot be null", "400"));
-            }
+                if (loginModel == null)
+                {
+                    return (false, CreateErrorResponse("Login model cannot be null", "400"));
+                }
 
-            if (string.IsNullOrWhiteSpace(loginModel.EmpNo) || string.IsNullOrWhiteSpace(loginModel.Password))
+                if (string.IsNullOrWhiteSpace(loginModel.EmpNo) || string.IsNullOrWhiteSpace(loginModel.Password))
+                {
+                    return (false, CreateErrorResponse("Username and password are required", "400"));
+                }
+
+                if (!_utility.IsValidUsername(loginModel.EmpNo))
+                {
+                    return (false, CreateErrorResponse("Invalid username format", "400"));
+                }
+
+                return (true, null);
+            }
+            catch
             {
-                return (false, CreateErrorResponse("Username and password are required", "400"));
+                return (false, CreateErrorResponse("Validation failed", "400"));
             }
-
-            if (!_utility.IsValidUsername(loginModel.EmpNo))
-            {
-                return (false, CreateErrorResponse("Invalid username format", "400"));
-            }
-
-            return (true, null);
         }
 
         /// <summary>
@@ -339,63 +332,82 @@ namespace DealerSetu_Services.Services
         /// </summary>
         /// <param name="result">Result from login repository operation</param>
         /// <returns>Service response with user information and JWT token</returns>
-        private async Task<ServiceResponse> ProcessLoginResult(dynamic result)
+        private async Task<ServiceResponse> ProcessLoginResult(dynamic result, LoginModel model)
         {
-            var response = new ServiceResponse
+            try
             {
-                Status = result.Status,
-                Code = result.Code,
-                Message = result.Message,
-                isError = result.Code != "200"
-            };
-
-            if (result.Code == "200")
-            {
-                var tokenHelperModel = new TokenHelperModel
+                var response = new ServiceResponse
                 {
-                    UserName = result.Name,
-                    EmpNo = result.EmpOrDNo,
-                    UserId = result.UserId,
-                    RoleId = result.RoleId,
-                    Role = result.Role
+                    Status = result.Status,
+                    Code = result.Code,
+                    Message = result.Message,
+                    isError = result.Code != "200"
                 };
 
-                // Generate JWT token
-                string token = _jwtTokenGenerator.GenerateJsonWebToken(tokenHelperModel, _configuration);
-
-                var userViewModel = new UserViewModel
+                if (result.Code == "200")
                 {
-                    UserName = result.Name,
-                    EmpNo = result.EmpOrDNo,
-                    Role = result.Role,
-                    RoleId = result.RoleId,
-                    Token = token
-                };
+                    var tokenHelperModel = new TokenHelperModel
+                    {
+                        UserName = result.Name,
+                        EmpNo = result.EmpOrDNo,
+                        UserId = result.UserId,
+                        RoleId = result.RoleId,
+                        Role = result.Role,
+                        BrowserName = model.BrowserName,
+                        BrowserVersion = model.BrowserVersion,
+                        IpAddress = model.IpAddress
+                    };
 
-                response.result = userViewModel;
+                    // Generate JWT token
+                    string token = _jwtTokenGenerator.GenerateJsonWebToken(tokenHelperModel, _configuration);
+                    await _loginRepo.UpdateUserAndGenerateTokenAsync(tokenHelperModel, token);
+
+                    var userViewModel = new UserViewModel
+                    {
+                        UserName = result.Name,
+                        EmpNo = result.EmpOrDNo,
+                        Role = result.Role,
+                        RoleId = result.RoleId,
+                        Token = token
+                    };
+
+                    response.result = userViewModel;
+                }
+
+                return response;
             }
-
-            return response;
+            catch
+            {
+                return CreateErrorResponse("Service temporarily unavailable", "500");
+            }
         }
 
         private CookieOptions GetJwtCookieOptions(bool expired = false)
         {
-            var options = new CookieOptions
+            try
             {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.None,
-                Path = "/",
-                Domain = null
-            };
+                var options = new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Path = "/",
+                    Domain = null
+                };
 
-            if (expired)
-            {
-                options.Expires = DateTime.UtcNow.AddDays(-1);
+                if (expired)
+                {
+                    options.Expires = DateTime.UtcNow.AddDays(-1);
+                }
+
+                return options;
             }
-
-            return options;
+            catch
+            {
+                return new CookieOptions();
+            }
         }
+
         private void ClearAllAuthCookies()
         {
             try
@@ -469,28 +481,36 @@ namespace DealerSetu_Services.Services
                     ClearRegularCookies(httpContext);
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                // _logger.LogError(ex, "Error clearing cookies during logout");
+                // Silent fail for cookie clearing
             }
         }
 
         private void ClearRegularCookies(HttpContext httpContext)
         {
-            var regularCookieOptions = new CookieOptions
+            try
             {
-                HttpOnly = false,
-                Secure = true,
-                SameSite = SameSiteMode.None,
-                Path = "/"
-            };
+                var regularCookieOptions = new CookieOptions
+                {
+                    HttpOnly = false,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Path = "/"
+                };
 
-            httpContext.Response.Cookies.Delete("isAuthenticated", regularCookieOptions);
-            httpContext.Response.Cookies.Delete("empNo", regularCookieOptions);
-            httpContext.Response.Cookies.Delete("userName", regularCookieOptions);
-            httpContext.Response.Cookies.Delete("userRole", regularCookieOptions);
-            httpContext.Response.Cookies.Delete("lastActivity", regularCookieOptions);
+                httpContext.Response.Cookies.Delete("isAuthenticated", regularCookieOptions);
+                httpContext.Response.Cookies.Delete("empNo", regularCookieOptions);
+                httpContext.Response.Cookies.Delete("userName", regularCookieOptions);
+                httpContext.Response.Cookies.Delete("userRole", regularCookieOptions);
+                httpContext.Response.Cookies.Delete("lastActivity", regularCookieOptions);
+            }
+            catch
+            {
+                // Silent fail for cookie clearing
+            }
         }
+
         /// <summary>
         /// Creates a standardized error response.
         /// </summary>

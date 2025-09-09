@@ -14,7 +14,7 @@ public class SecurityMiddleware
     private readonly ILogger<SecurityMiddleware> _logger;
     private readonly string[] _allowedHosts;
     private readonly ConcurrentDictionary<string, List<DateTime>> _requestLog = new();
-    private readonly int _maxRequestsPerMinute = 100;
+    private readonly int _maxRequestsPerMinute = 50;
     private readonly int _maxInputLength = 10000;
 
     public SecurityMiddleware(RequestDelegate next, IConfiguration configuration, ILogger<SecurityMiddleware> logger)
@@ -38,7 +38,7 @@ public class SecurityMiddleware
             // 1. Dynamic Rate Limiting (application-level)
             if (IsRateLimited(clientIp))
             {
-                LogSecurityEvent("RateLimit", $"Rate limit exceeded for IP: {clientIp}", context);
+                //LogSecurityEvent("RateLimit", $"Rate limit exceeded for IP: {clientIp}", context);
                 context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
                 await context.Response.WriteAsync("Too Many Requests");
                 return;
@@ -47,7 +47,7 @@ public class SecurityMiddleware
             // 2. Host Header Validation (business logic)
             if (!IsValidHost(context))
             {
-                LogSecurityEvent("InvalidHost", $"Invalid host header: {context.Request.Host.Value}", context);
+                //LogSecurityEvent("InvalidHost", $"Invalid host header: {context.Request.Host.Value}", context);
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 await context.Response.WriteAsync("Forbidden");
                 return;
@@ -56,7 +56,7 @@ public class SecurityMiddleware
             // 3. Advanced XSS Protection (content analysis)
             if (IsXssAttempt(context))
             {
-                LogSecurityEvent("XSSAttempt", "Potential XSS attack detected", context);
+                //LogSecurityEvent("XSSAttempt", "Potential XSS attack detected", context);
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
                 await context.Response.WriteAsync("Bad Request");
                 return;
@@ -65,7 +65,7 @@ public class SecurityMiddleware
             // 4. Form Input Validation (business logic)
             if (!ValidateFormInputs(context))
             {
-                LogSecurityEvent("InvalidInput", "Form input validation failed", context);
+                //LogSecurityEvent("InvalidInput", "Form input validation failed", context);
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
                 await context.Response.WriteAsync("Bad Request");
                 return;
@@ -320,15 +320,15 @@ public class SecurityMiddleware
         return csp;
     }
 
-    private void LogSecurityEvent(string eventType, string details, HttpContext context)
-    {
-        var clientIp = GetClientIpAddress(context);
-        var userAgent = context.Request.Headers["User-Agent"].ToString();
-        var requestPath = context.Request.Path;
-        var method = context.Request.Method;
-        var referer = context.Request.Headers["Referer"].ToString();
+    //private void LogSecurityEvent(string eventType, string details, HttpContext context)
+    //{
+    //    var clientIp = GetClientIpAddress(context);
+    //    var userAgent = context.Request.Headers["User-Agent"].ToString();
+    //    var requestPath = context.Request.Path;
+    //    var method = context.Request.Method;
+    //    var referer = context.Request.Headers["Referer"].ToString();
 
-        _logger.LogWarning("Security Event: {EventType} - {Details} - IP: {IpAddress} - Path: {RequestPath} - Method: {Method} - UserAgent: {UserAgent} - Referer: {Referer}",
-            eventType, details, clientIp, requestPath, method, userAgent, referer);
-    }
+    //    _logger.LogWarning("Security Event: {EventType} - {Details} - IP: {IpAddress} - Path: {RequestPath} - Method: {Method} - UserAgent: {UserAgent} - Referer: {Referer}",
+    //        eventType, details, clientIp, requestPath, method, userAgent, referer);
+    //}
 }

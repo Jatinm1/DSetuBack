@@ -21,8 +21,15 @@ namespace DealerSetu_Repositories.Repositories
         /// <param name="configuration">Configuration containing connection string</param>
         public LoginRepository(IConfiguration configuration)
         {
-            _connectionString = configuration.GetConnectionString("dbDealerSetuEntities")
-                ?? throw new ArgumentException("Connection string 'dbDealerSetuEntities' not found");
+            try
+            {
+                _connectionString = configuration.GetConnectionString("dbDealerSetuEntities")
+                    ?? throw new ArgumentException("Connection string 'dbDealerSetuEntities' not found");
+            }
+            catch
+            {
+                throw new ArgumentException("Configuration error occurred");
+            }
         }
 
         /// <summary>
@@ -32,13 +39,28 @@ namespace DealerSetu_Repositories.Repositories
         /// <returns>Authentication result or error response</returns>
         public async Task<dynamic> LoginRepo(LoginModel loginModel)
         {
-            if (loginModel == null)
-                return CreateErrorResponse("Invalid login data");
-
             try
             {
+                if (loginModel == null)
+                    return CreateErrorResponse("Invalid login data");
+
                 using var connection = new SqlConnection(_connectionString);
                 await connection.OpenAsync();
+
+                var heartbeatCheck = await connection.QueryAsync<string>(
+                                 "Proc_GetUserByToken",
+                                    new { EmpNo = loginModel.EmpNo },
+                                    commandType: CommandType.StoredProcedure
+                                    );
+
+                if (!heartbeatCheck.Any()) // If connection is out
+                {
+                    await connection.ExecuteAsync(
+                        "Proc_UpdateUserLoggedInStatus",
+                        new { EmpNo = loginModel.EmpNo },
+                        commandType: CommandType.StoredProcedure
+                    );
+                }
 
                 var parameters = new DynamicParameters();
                 parameters.Add("@EmpNo", loginModel.EmpNo, DbType.String, size: 200);
@@ -51,13 +73,42 @@ namespace DealerSetu_Repositories.Repositories
 
                 return result ?? CreateErrorResponse("Authentication failed");
             }
-            catch (SqlException)
+            catch
             {
-                return CreateErrorResponse("Database connection failed");
+                return CreateErrorResponse("Service temporarily unavailable");
             }
-            catch (Exception)
+        }
+
+        public async Task<int> UpdateUserAndGenerateTokenAsync(TokenHelperModel model, string token)
+        {
+            try
             {
-                return CreateErrorResponse("Authentication service unavailable");
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                var parameters = new
+                {
+                    EmpNo = model.EmpNo,
+                    IpAddress = model.IpAddress,
+                    BrowserName = model.BrowserName,
+                    BrowserVersion = model.BrowserVersion
+                };
+
+                await connection.ExecuteAsync(
+                            "Proc_UpdateHeartBeat",
+                            new { EmpNo = model.EmpNo },
+                            commandType: CommandType.StoredProcedure
+                        );
+
+                return await connection.ExecuteAsync(
+                    "Proc_UpdateUserAndGenerateToken",
+                    parameters,
+                    commandType: CommandType.StoredProcedure
+                );
+            }
+            catch
+            {
+                return 0;
             }
         }
 
@@ -69,11 +120,11 @@ namespace DealerSetu_Repositories.Repositories
         /// <returns>Authentication result or error response</returns>
         public async Task<dynamic> LDAPLoginRepo(LoginModel loginModel, bool ldapValidated)
         {
-            if (loginModel == null || !ldapValidated)
-                return CreateErrorResponse("Invalid LDAP authentication");
-
             try
             {
+                if (loginModel == null || !ldapValidated)
+                    return CreateErrorResponse("Invalid LDAP authentication");
+
                 using var connection = new SqlConnection(_connectionString);
                 await connection.OpenAsync();
 
@@ -87,13 +138,9 @@ namespace DealerSetu_Repositories.Repositories
 
                 return result ?? CreateErrorResponse("LDAP authentication failed");
             }
-            catch (SqlException)
+            catch
             {
-                return CreateErrorResponse("Database connection failed");
-            }
-            catch (Exception)
-            {
-                return CreateErrorResponse("LDAP service unavailable");
+                return CreateErrorResponse("Service temporarily unavailable");
             }
         }
 
@@ -105,11 +152,11 @@ namespace DealerSetu_Repositories.Repositories
         /// <returns>List of pending counts by category</returns>
         public async Task<List<PendingCountModel>> PendingCountRepo(string empNo, string roleId)
         {
-            if (string.IsNullOrWhiteSpace(empNo) || string.IsNullOrWhiteSpace(roleId))
-                return new List<PendingCountModel>();
-
             try
             {
+                if (string.IsNullOrWhiteSpace(empNo) || string.IsNullOrWhiteSpace(roleId))
+                    return new List<PendingCountModel>();
+
                 using var connection = new SqlConnection(_connectionString);
                 await connection.OpenAsync();
 
@@ -124,7 +171,7 @@ namespace DealerSetu_Repositories.Repositories
 
                 return results?.ToList() ?? new List<PendingCountModel>();
             }
-            catch (Exception)
+            catch
             {
                 return new List<PendingCountModel>();
             }
@@ -137,11 +184,11 @@ namespace DealerSetu_Repositories.Repositories
         /// <returns>Service response indicating success or failure</returns>
         public async Task<dynamic> LogoutRepo(string empNo)
         {
-            if (string.IsNullOrWhiteSpace(empNo))
-                return CreateErrorResponse("Invalid employee number", "400");
-
             try
             {
+                if (string.IsNullOrWhiteSpace(empNo))
+                    return CreateErrorResponse("Invalid employee number", "400");
+
                 using var connection = new SqlConnection(_connectionString);
                 await connection.OpenAsync();
 
@@ -161,13 +208,13 @@ namespace DealerSetu_Repositories.Repositories
                     isError = result?.Code != "200"
                 };
             }
-            catch (Exception ex)
+            catch
             {
                 return new ServiceResponse
                 {
                     Status = "Failure",
                     Code = "500",
-                    Message = "Logout operation failed",
+                    Message = "Service temporarily unavailable",
                     isError = true
                 };
             }
@@ -180,11 +227,11 @@ namespace DealerSetu_Repositories.Repositories
         /// <returns>True if heartbeat updated successfully</returns>
         public async Task<bool> UpdateLoginHeartBeatRepo(string empNo)
         {
-            if (string.IsNullOrWhiteSpace(empNo))
-                return false;
-
             try
             {
+                if (string.IsNullOrWhiteSpace(empNo))
+                    return false;
+
                 using var connection = new SqlConnection(_connectionString);
                 await connection.OpenAsync();
 
@@ -195,7 +242,7 @@ namespace DealerSetu_Repositories.Repositories
 
                 return result > 0;
             }
-            catch (Exception)
+            catch
             {
                 return false;
             }
@@ -208,11 +255,11 @@ namespace DealerSetu_Repositories.Repositories
         /// <returns>True if heartbeat updated successfully</returns>
         public async Task<bool> UpdateRegularHeartBeatRepo(string empNo)
         {
-            if (string.IsNullOrWhiteSpace(empNo))
-                return false;
-
             try
             {
+                if (string.IsNullOrWhiteSpace(empNo))
+                    return false;
+
                 using var connection = new SqlConnection(_connectionString);
                 await connection.OpenAsync();
 
@@ -223,7 +270,7 @@ namespace DealerSetu_Repositories.Repositories
 
                 return result == 1;
             }
-            catch (Exception)
+            catch
             {
                 return false;
             }

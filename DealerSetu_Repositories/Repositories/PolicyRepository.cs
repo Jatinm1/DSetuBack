@@ -22,8 +22,15 @@ namespace DealerSetu_Repositories.Repositories
         /// <param name="configuration">Configuration containing connection string</param>
         public PolicyRepository(IConfiguration configuration)
         {
-            _connectionString = configuration?.GetConnectionString("dbDealerSetuEntities")
-                ?? throw new ArgumentNullException(nameof(configuration), "Connection string 'dbDealerSetuEntities' not found");
+            try
+            {
+                _connectionString = configuration?.GetConnectionString("dbDealerSetuEntities")
+                    ?? throw new ArgumentNullException(nameof(configuration), "Connection string 'dbDealerSetuEntities' not found");
+            }
+            catch (Exception)
+            {
+                throw new InvalidOperationException("Configuration error occurred");
+            }
         }
 
         /// <summary>
@@ -43,10 +50,6 @@ namespace DealerSetu_Repositories.Repositories
 
                 return result;
             }
-            catch (SqlException)
-            {
-                throw new InvalidOperationException("Database connection failed while retrieving policy list");
-            }
             catch (Exception)
             {
                 throw new InvalidOperationException("Failed to retrieve policy list");
@@ -58,16 +61,16 @@ namespace DealerSetu_Repositories.Repositories
         /// </summary>
         /// <param name="model">Policy upload model containing file details</param>
         /// <returns>Success code "200" or error message</returns>
-        public string SendFilesToServerRepo(FileUploadModel model,string updatedFileName)
+        public string SendFilesToServerRepo(FileUploadModel model, string updatedFileName)
         {
-            if (model == null)
-                return "Invalid upload model";
-
-            if (string.IsNullOrWhiteSpace(updatedFileName))
-                return "File name is required";
-
             try
             {
+                if (model == null)
+                    return "Invalid upload model";
+
+                if (string.IsNullOrWhiteSpace(updatedFileName))
+                    return "File name is required";
+
                 using var connection = new SqlConnection(_connectionString);
 
                 var parameters = new DynamicParameters();
@@ -81,10 +84,6 @@ namespace DealerSetu_Repositories.Repositories
 
                 return result > 0 ? "200" : "File upload failed";
             }
-            catch (SqlException)
-            {
-                return "Database error during file upload";
-            }
             catch (Exception)
             {
                 return "File upload operation failed";
@@ -93,14 +92,14 @@ namespace DealerSetu_Repositories.Repositories
 
         public string SendPolicyToServerRepo(PolicyUploadModel model, string updatedFileName)
         {
-            if (model == null)
-                return "Invalid upload model";
-
-            if (string.IsNullOrWhiteSpace(updatedFileName))
-                return "File name is required";
-
             try
             {
+                if (model == null)
+                    return "Invalid upload model";
+
+                if (string.IsNullOrWhiteSpace(updatedFileName))
+                    return "File name is required";
+
                 using var connection = new SqlConnection(_connectionString);
 
                 var parameters = new DynamicParameters();
@@ -115,10 +114,6 @@ namespace DealerSetu_Repositories.Repositories
 
                 return result > 0 ? "200" : "File upload failed";
             }
-            catch (SqlException)
-            {
-                return "Database error during file upload";
-            }
             catch (Exception)
             {
                 return "File upload operation failed";
@@ -126,8 +121,6 @@ namespace DealerSetu_Repositories.Repositories
         }
     }
 }
-
-
 
 //*************************************Methods for FUTURE USE*************************************
 

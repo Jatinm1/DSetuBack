@@ -54,7 +54,7 @@ namespace DealerSetu.Controllers
                     {
                         isError = true,
                         Error = "Validation failed",
-                        Message = validationResult.ToString(),
+                        Message = "Request validation failed.",
                         Status = "Error",
                         Code = "400"
                     });
@@ -84,7 +84,7 @@ namespace DealerSetu.Controllers
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
-                    Error = ex.Message,
+                    Error = "Internal server error",
                     Message = "An error occurred while processing your request.",
                     Status = "Error",
                     Code = "500"
@@ -104,7 +104,7 @@ namespace DealerSetu.Controllers
                     {
                         isError = true,
                         Error = "Validation failed",
-                        Message = validationResult.ToString(),
+                        Message = "Request validation failed.",
                         Status = "Error",
                         Code = "400"
                     });
@@ -131,7 +131,7 @@ namespace DealerSetu.Controllers
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
-                    Error = ex.Message,
+                    Error = "Internal server error",
                     Message = "An error occurred while processing your request.",
                     Status = "Error",
                     Code = "500"
@@ -156,7 +156,7 @@ namespace DealerSetu.Controllers
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
-                    Error = ex.Message,
+                    Error = "Internal server error",
                     Message = "An error occurred while processing your request.",
                     Status = "Error",
                     Code = "500"
@@ -178,7 +178,7 @@ namespace DealerSetu.Controllers
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
-                    Error = ex.Message,
+                    Error = "Internal server error",
                     Message = "An unexpected error occurred",
                     Status = "Error",
                     Code = "500"
@@ -199,7 +199,7 @@ namespace DealerSetu.Controllers
                         {
                             isError = true,
                             Error = "Validation failed",
-                            Message = "ActivityType is required.",
+                            Message = "Required field is missing.",
                             Status = "Error",
                             Code = "400"
                         });
@@ -209,7 +209,7 @@ namespace DealerSetu.Controllers
                         {
                             isError = true,
                             Error = "Validation failed",
-                            Message = "ActivityThrough is required.",
+                            Message = "Required field is missing.",
                             Status = "Error",
                             Code = "400"
                         });
@@ -219,7 +219,7 @@ namespace DealerSetu.Controllers
                         {
                             isError = true,
                             Error = "Validation failed",
-                            Message = "BudgetRequested is required.",
+                            Message = "Required field is missing.",
                             Status = "Error",
                             Code = "400"
                         });
@@ -229,7 +229,7 @@ namespace DealerSetu.Controllers
                         {
                             isError = true,
                             Error = "Validation failed",
-                            Message = "ActivityMonth is required.",
+                            Message = "Required field is missing.",
                             Status = "Error",
                             Code = "400"
                         });
@@ -253,8 +253,8 @@ namespace DealerSetu.Controllers
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
-                    Error = ex.Message,
-                    Message = "An error occurred while submitting the claim.",
+                    Error = "Internal server error",
+                    Message = "An error occurred while processing your request.",
                     Status = "Error",
                     Code = "500"
                 });
@@ -273,7 +273,7 @@ namespace DealerSetu.Controllers
                         {
                             isError = true,
                             Error = "Validation failed",
-                            Message = "ActivityType is required.",
+                            Message = "Required field is missing.",
                             Status = "Error",
                             Code = "400"
                         });
@@ -283,7 +283,7 @@ namespace DealerSetu.Controllers
                         {
                             isError = true,
                             Error = "Validation failed",
-                            Message = "ActivityThrough is required.",
+                            Message = "Required field is missing.",
                             Status = "Error",
                             Code = "400"
                         });
@@ -293,7 +293,7 @@ namespace DealerSetu.Controllers
                         {
                             isError = true,
                             Error = "Validation failed",
-                            Message = "BudgetRequested is required.",
+                            Message = "Required field is missing.",
                             Status = "Error",
                             Code = "400"
                         });
@@ -303,7 +303,7 @@ namespace DealerSetu.Controllers
                         {
                             isError = true,
                             Error = "Validation failed",
-                            Message = "ActivityMonth is required.",
+                            Message = "Required field is missing.",
                             Status = "Error",
                             Code = "400"
                         });
@@ -326,8 +326,8 @@ namespace DealerSetu.Controllers
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
-                    Error = ex.Message,
-                    Message = "An error occurred while updating the claim.",
+                    Error = "Internal server error",
+                    Message = "An error occurred while processing your request.",
                     Status = "Error",
                     Code = "500"
                 });
@@ -351,8 +351,8 @@ namespace DealerSetu.Controllers
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
-                    Error = ex.Message,
-                    Message = "An error occurred while fetching claim details.",
+                    Error = "Internal server error",
+                    Message = "An error occurred while processing your request.",
                     Status = "Error",
                     Code = "500"
                 });
@@ -383,8 +383,8 @@ namespace DealerSetu.Controllers
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
-                    Error = ex.Message,
-                    Message = "An error occurred while processing the request.",
+                    Error = "Internal server error",
+                    Message = "An error occurred while processing your request.",
                     Status = "Error",
                     Code = "500"
                 });
@@ -402,7 +402,7 @@ namespace DealerSetu.Controllers
                     {
                         isError = true,
                         Error = "Invalid payload",
-                        Message = "ActivityId must not be null or 0",
+                        Message = "Required field is missing or invalid.",
                         Status = "Error",
                         Code = "400"
                     });
@@ -425,7 +425,7 @@ namespace DealerSetu.Controllers
                         {
                             isError = true,
                             Error = "Invalid payload",
-                            Message = $"{field.Key} field is required",
+                            Message = "Required field is missing.",
                             Status = "Error",
                             Code = "400"
                         });
@@ -440,7 +440,7 @@ namespace DealerSetu.Controllers
                     {
                         isError = true,
                         Error = "Invalid payload",
-                        Message = "DateOfActivity is not a valid date",
+                        Message = "Date format is invalid.",
                         Status = "Error",
                         Code = "400"
                     });
@@ -453,7 +453,7 @@ namespace DealerSetu.Controllers
                     {
                         isError = true,
                         Error = "Invalid payload",
-                        Message = "DateOfActivity must be after 01/01/2000",
+                        Message = "Date value is invalid.",
                         Status = "Error",
                         Code = "400"
                     });
@@ -478,7 +478,14 @@ namespace DealerSetu.Controllers
                     var validationResult = await _fileValidationService.ValidateImageAsync(request.Image1, MaxFileSize);
                     if ((bool)validationResult.isError)
                     {
-                        return StatusCode(int.Parse(validationResult.Code), validationResult);
+                        return StatusCode(int.Parse(validationResult.Code), new ServiceResponse
+                        {
+                            isError = true,
+                            Error = "File validation failed",
+                            Message = "Invalid file provided.",
+                            Status = "Error",
+                            Code = validationResult.Code
+                        });
                     }
                 }
                 if (request.Image2 != null)
@@ -486,7 +493,14 @@ namespace DealerSetu.Controllers
                     var validationResult = await _fileValidationService.ValidateImageAsync(request.Image2, MaxFileSize);
                     if ((bool)validationResult.isError)
                     {
-                        return StatusCode(int.Parse(validationResult.Code), validationResult);
+                        return StatusCode(int.Parse(validationResult.Code), new ServiceResponse
+                        {
+                            isError = true,
+                            Error = "File validation failed",
+                            Message = "Invalid file provided.",
+                            Status = "Error",
+                            Code = validationResult.Code
+                        });
                     }
                 }
                 if (request.Image3 != null)
@@ -494,7 +508,14 @@ namespace DealerSetu.Controllers
                     var validationResult = await _fileValidationService.ValidateImageAsync(request.Image3, MaxFileSize);
                     if ((bool)validationResult.isError)
                     {
-                        return StatusCode(int.Parse(validationResult.Code), validationResult);
+                        return StatusCode(int.Parse(validationResult.Code), new ServiceResponse
+                        {
+                            isError = true,
+                            Error = "File validation failed",
+                            Message = "Invalid file provided.",
+                            Status = "Error",
+                            Code = validationResult.Code
+                        });
                     }
                 }
                 #endregion
@@ -521,8 +542,8 @@ namespace DealerSetu.Controllers
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
-                    Error = ex.Message,
-                    Message = "Internal server error",
+                    Error = "Internal server error",
+                    Message = "An error occurred while processing your request.",
                     Status = "Error",
                     Code = "500"
                 });
@@ -540,7 +561,7 @@ namespace DealerSetu.Controllers
                     {
                         isError = true,
                         Error = "Invalid payload",
-                        Message = "ActivityId must not be null or 0",
+                        Message = "Required field is missing or invalid.",
                         Status = "Error",
                         Code = "400"
                     });
@@ -555,7 +576,7 @@ namespace DealerSetu.Controllers
                         {
                             isError = true,
                             Error = "Invalid payload",
-                            Message = "DateOfActivity is not a valid date",
+                            Message = "Date format is invalid.",
                             Status = "Error",
                             Code = "400"
                         });
@@ -568,7 +589,7 @@ namespace DealerSetu.Controllers
                         {
                             isError = true,
                             Error = "Invalid payload",
-                            Message = "DateOfActivity must be after 01/01/2000",
+                            Message = "Date value is invalid.",
                             Status = "Error",
                             Code = "400"
                         });
@@ -594,7 +615,14 @@ namespace DealerSetu.Controllers
                     var validationResult = await _fileValidationService.ValidateImageAsync(request.Image1, MaxFileSize);
                     if ((bool)validationResult.isError)
                     {
-                        return StatusCode(int.Parse(validationResult.Code), validationResult);
+                        return StatusCode(int.Parse(validationResult.Code), new ServiceResponse
+                        {
+                            isError = true,
+                            Error = "File validation failed",
+                            Message = "Invalid file provided.",
+                            Status = "Error",
+                            Code = validationResult.Code
+                        });
                     }
                 }
                 if (request.Image2 != null)
@@ -602,7 +630,14 @@ namespace DealerSetu.Controllers
                     var validationResult = await _fileValidationService.ValidateImageAsync(request.Image2, MaxFileSize);
                     if ((bool)validationResult.isError)
                     {
-                        return StatusCode(int.Parse(validationResult.Code), validationResult);
+                        return StatusCode(int.Parse(validationResult.Code), new ServiceResponse
+                        {
+                            isError = true,
+                            Error = "File validation failed",
+                            Message = "Invalid file provided.",
+                            Status = "Error",
+                            Code = validationResult.Code
+                        });
                     }
                 }
                 if (request.Image3 != null)
@@ -610,7 +645,14 @@ namespace DealerSetu.Controllers
                     var validationResult = await _fileValidationService.ValidateImageAsync(request.Image3, MaxFileSize);
                     if ((bool)validationResult.isError)
                     {
-                        return StatusCode(int.Parse(validationResult.Code), validationResult);
+                        return StatusCode(int.Parse(validationResult.Code), new ServiceResponse
+                        {
+                            isError = true,
+                            Error = "File validation failed",
+                            Message = "Invalid file provided.",
+                            Status = "Error",
+                            Code = validationResult.Code
+                        });
                     }
                 }
                 #endregion
@@ -638,8 +680,8 @@ namespace DealerSetu.Controllers
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
-                    Error = ex.Message,
-                    Message = "Internal server error",
+                    Error = "Internal server error",
+                    Message = "An error occurred while processing your request.",
                     Status = "Error",
                     Code = "500"
                 });
@@ -662,8 +704,8 @@ namespace DealerSetu.Controllers
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
-                    Error = ex.Message,
-                    Message = "An error occurred while fetching claim details.",
+                    Error = "Internal server error",
+                    Message = "An error occurred while processing your request.",
                     Status = "Error",
                     Code = "500"
                 });
@@ -694,8 +736,8 @@ namespace DealerSetu.Controllers
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
-                    Error = ex.Message,
-                    Message = "An error occurred while fetching claim details.",
+                    Error = "Internal server error",
+                    Message = "An error occurred while processing your request.",
                     Status = "Error",
                     Code = "500"
                 });
@@ -728,8 +770,8 @@ namespace DealerSetu.Controllers
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
-                    Error = ex.Message,
-                    Message = "An error occurred while processing the request.",
+                    Error = "Internal server error",
+                    Message = "An error occurred while processing your request.",
                     Status = "Error",
                     Code = "500"
                 });
@@ -752,8 +794,8 @@ namespace DealerSetu.Controllers
                 return StatusCode(500, new ServiceResponse
                 {
                     isError = true,
-                    Error = ex.Message,
-                    Message = "An error occurred while processing the request.",
+                    Error = "Internal server error",
+                    Message = "An error occurred while processing your request.",
                     Status = "Error",
                     Code = "500"
                 });

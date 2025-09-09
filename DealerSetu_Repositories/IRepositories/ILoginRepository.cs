@@ -1,5 +1,6 @@
 ﻿using DealerSetu_Data;
 using DealerSetu_Data.Common;
+using DealerSetu_Data.Models.HelperModels;
 using DealerSetu_Data.Models.ViewModels;
 using System;
 using System.Collections.Generic;
@@ -13,6 +14,7 @@ namespace DealerSetu_Repositories.IRepositories
     public interface ILoginRepository
     {
         Task<dynamic> LoginRepo(LoginModel loginModel); // Fetch user details from SP
+        Task<int> UpdateUserAndGenerateTokenAsync(TokenHelperModel model, string token);
         Task<dynamic> LDAPLoginRepo(LoginModel loginModel, bool ldapValidated);
         Task<dynamic> LogoutRepo(string empNo);
         Task<List<PendingCountModel>> PendingCountRepo(string empNo, string roleId);

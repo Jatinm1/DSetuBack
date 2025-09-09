@@ -61,7 +61,8 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                return await _utility.HandleInternalServerError(this, ex, _logger, "GetReportList");
+                _logger.LogError(ex, "Error in GetReportList");
+                return StatusCode(500, _utility.CreateErrorResponse("Server Error", "An unexpected error occurred while processing your request.", "500"));
             }
         }
 
@@ -90,7 +91,8 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                return await _utility.HandleInternalServerError(this, ex, _logger, "GetRejectList");
+                _logger.LogError(ex, "Error in GetRejectList");
+                return StatusCode(500, _utility.CreateErrorResponse("Server Error", "An unexpected error occurred while processing your request.", "500"));
             }
         }
 
@@ -110,7 +112,8 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                return await _utility.HandleInternalServerError(this, ex, _logger, "GetNewDealerstatewise");
+                _logger.LogError(ex, "Error in GetNewDealerstatewise");
+                return StatusCode(500, _utility.CreateErrorResponse("Server Error", "An unexpected error occurred while processing your request.", "500"));
             }
         }
 
@@ -146,7 +149,8 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                return await _utility.HandleInternalServerError(this, ex, _logger, "GetDemoReqList");
+                _logger.LogError(ex, "Error in GetDemoReqList");
+                return StatusCode(500, _utility.CreateErrorResponse("Server Error", "An unexpected error occurred while processing your request.", "500"));
             }
         }
 
@@ -165,7 +169,8 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, _utility.CreateErrorResponse("Server Error", "An error occurred while fetching dropdown options.", "500"));
+                _logger.LogError(ex, "Error in GetDropdownOptions");
+                return StatusCode(500, _utility.CreateErrorResponse("Server Error", "An unexpected error occurred while processing your request.", "500"));
             }
         }
 
@@ -215,7 +220,8 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                return await _utility.HandleInternalServerError(this, ex, _logger, "GetNewDealerActivityListing");
+                _logger.LogError(ex, "Error in GetNewDealerActivityListing");
+                return StatusCode(500, _utility.CreateErrorResponse("Server Error", "An unexpected error occurred while processing your request.", "500"));
             }
         }
 
@@ -254,7 +260,8 @@ namespace DealerSetu.Controllers
             }
             catch (Exception ex)
             {
-                return await _utility.HandleInternalServerError(this, ex, _logger, "GetNewDealerClaimListing");
+                _logger.LogError(ex, "Error in GetNewDealerClaimListing");
+                return StatusCode(500, _utility.CreateErrorResponse("Server Error", "An unexpected error occurred while processing your request.", "500"));
             }
         }
 
@@ -271,27 +278,43 @@ namespace DealerSetu.Controllers
 
         private (string EmpNo, string RoleId, object ErrorResponse) GetAndValidateAuthClaims()
         {
-            var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
-            var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
-
-            if (string.IsNullOrEmpty(empNo) || string.IsNullOrEmpty(roleId))
+            try
             {
-                return (null, null, _utility.CreateErrorResponse(
-                    "Unauthorized", "UserId or RoleId is not present or invalid in the token.", "401"));
-            }
+                var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
+                var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
 
-            return (empNo.Trim(), roleId.Trim(), null);
+                if (string.IsNullOrEmpty(empNo) || string.IsNullOrEmpty(roleId))
+                {
+                    return (null, null, _utility.CreateErrorResponse(
+                        "Unauthorized", "UserId or RoleId is not present or invalid in the token.", "401"));
+                }
+
+                return (empNo.Trim(), roleId.Trim(), null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in GetAndValidateAuthClaims");
+                return (null, null, _utility.CreateErrorResponse("Server Error", "An unexpected error occurred while processing your request.", "500"));
+            }
         }
 
         private FilterModel CreateFilterModel(DateTime? from, DateTime? to, string empNo, string roleId)
         {
-            return new FilterModel
+            try
             {
-                From = from,
-                To = to,
-                EmpNo = empNo,
-                RoleId = roleId
-            };
+                return new FilterModel
+                {
+                    From = from,
+                    To = to,
+                    EmpNo = empNo,
+                    RoleId = roleId
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in CreateFilterModel");
+                throw;
+            }
         }
 
         #endregion

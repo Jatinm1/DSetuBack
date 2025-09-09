@@ -34,31 +34,38 @@ namespace DealerSetu_Repositories.Repositories
         public async Task<(List<DemoTractorResponseModel> DemoTractorList, int TotalCount)> DemoTractorApprovedRepo(
             FilterModel filter, int pageIndex, int pageSize)
         {
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@EmpNo", filter.EmpNo);
-            parameters.Add("@RoleId", filter.RoleId);
-            parameters.Add("@RequestNo", filter.RequestNo);
-            parameters.Add("@From", filter.From);
-            parameters.Add("@To", filter.To);
-            parameters.Add("@State", filter.State);
-            parameters.Add("@Status", filter.Status);
-            parameters.Add("@Fyear", filter.Fyear);
-            parameters.Add("@Export", filter.Export);
-            parameters.Add("@PageIndex", pageIndex);
-            parameters.Add("@PageSize", pageSize);
+                var parameters = new DynamicParameters();
+                parameters.Add("@EmpNo", filter.EmpNo);
+                parameters.Add("@RoleId", filter.RoleId);
+                parameters.Add("@RequestNo", filter.RequestNo);
+                parameters.Add("@From", filter.From);
+                parameters.Add("@To", filter.To);
+                parameters.Add("@State", filter.State);
+                parameters.Add("@Status", filter.Status);
+                parameters.Add("@Fyear", filter.Fyear);
+                parameters.Add("@Export", filter.Export);
+                parameters.Add("@PageIndex", pageIndex);
+                parameters.Add("@PageSize", pageSize);
 
-            using var multi = await connection.QueryMultipleAsync(
-                "sp_DEMOTRAC_ApprovedList",
-                parameters,
-                commandType: CommandType.StoredProcedure);
+                using var multi = await connection.QueryMultipleAsync(
+                    "sp_DEMOTRAC_ApprovedList",
+                    parameters,
+                    commandType: CommandType.StoredProcedure);
 
-            var demoTractorList = (await multi.ReadAsync<DemoTractorResponseModel>()).ToList();
-            var totalCount = (await multi.ReadAsync<int>()).FirstOrDefault();
+                var demoTractorList = (await multi.ReadAsync<DemoTractorResponseModel>()).ToList();
+                var totalCount = (await multi.ReadAsync<int>()).FirstOrDefault();
 
-            return (demoTractorList, totalCount);
+                return (demoTractorList, totalCount);
+            }
+            catch
+            {
+                return (new List<DemoTractorResponseModel>(), 0);
+            }
         }
 
         /// <summary>
@@ -67,31 +74,38 @@ namespace DealerSetu_Repositories.Repositories
         public async Task<(List<DemoTractorResponseModel> PendingDemoTractorList, int TotalCount)> DemoTractorPendingRepo(
             FilterModel filter, int pageIndex, int pageSize)
         {
-            var FromDate = filter.From?.ToString("yyyy-MM-dd") ?? null;
-            var ToDate = filter.To?.ToString("yyyy-MM-dd") ?? null;
+            try
+            {
+                var FromDate = filter.From?.ToString("yyyy-MM-dd") ?? null;
+                var ToDate = filter.To?.ToString("yyyy-MM-dd") ?? null;
 
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@EmpNo", filter.EmpNo);
-            parameters.Add("@RoleId", filter.RoleId);
-            parameters.Add("@RequestNo", filter.RequestNo);
-            parameters.Add("@From",FromDate);
-            parameters.Add("@To", ToDate);
-            parameters.Add("@PageIndex", pageIndex);
-            parameters.Add("@PageSize", pageSize);
+                var parameters = new DynamicParameters();
+                parameters.Add("@EmpNo", filter.EmpNo);
+                parameters.Add("@RoleId", filter.RoleId);
+                parameters.Add("@RequestNo", filter.RequestNo);
+                parameters.Add("@From", FromDate);
+                parameters.Add("@To", ToDate);
+                parameters.Add("@PageIndex", pageIndex);
+                parameters.Add("@PageSize", pageSize);
 
-            using var multi = await connection.QueryMultipleAsync(
-                "sp_DEMOTRAC_PendingList",
-                parameters,
-                commandType: CommandType.StoredProcedure);
+                using var multi = await connection.QueryMultipleAsync(
+                    "sp_DEMOTRAC_PendingList",
+                    parameters,
+                    commandType: CommandType.StoredProcedure);
 
-            var pendingDemoTractorList = (await multi.ReadAsync<DemoTractorResponseModel>()).ToList();
-            var totalCount = (await multi.ReadAsync<int>()).FirstOrDefault();
+                var pendingDemoTractorList = (await multi.ReadAsync<DemoTractorResponseModel>()).ToList();
+                var totalCount = (await multi.ReadAsync<int>()).FirstOrDefault();
 
-            return (pendingDemoTractorList, totalCount);
+                return (pendingDemoTractorList, totalCount);
+            }
+            catch
+            {
+                return (new List<DemoTractorResponseModel>(), 0);
+            }
         }
 
         /// <summary>
@@ -100,27 +114,34 @@ namespace DealerSetu_Repositories.Repositories
         public async Task<(List<DemoTractorResponseModel> PendingClaimUploadList, int TotalCount)> DemoTractorPendingClaimRepo(
             FilterModel filter, int pageIndex, int pageSize)
         {
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@EmpNo", filter.EmpNo);
-            parameters.Add("@RoleId", filter.RoleId);
-            parameters.Add("@RequestNo", filter.RequestNo);
-            parameters.Add("@FromDate", filter.From);
-            parameters.Add("@ToDate", filter.To);
-            parameters.Add("@PageIndex", pageIndex);
-            parameters.Add("@PageSize", pageSize);
+                var parameters = new DynamicParameters();
+                parameters.Add("@EmpNo", filter.EmpNo);
+                parameters.Add("@RoleId", filter.RoleId);
+                parameters.Add("@RequestNo", filter.RequestNo);
+                parameters.Add("@FromDate", filter.From);
+                parameters.Add("@ToDate", filter.To);
+                parameters.Add("@PageIndex", pageIndex);
+                parameters.Add("@PageSize", pageSize);
 
-            using var multi = await connection.QueryMultipleAsync(
-                "sp_DEMOTRAC_PendingClaimList",
-                parameters,
-                commandType: CommandType.StoredProcedure);
+                using var multi = await connection.QueryMultipleAsync(
+                    "sp_DEMOTRAC_PendingClaimList",
+                    parameters,
+                    commandType: CommandType.StoredProcedure);
 
-            var pendingClaimUploadList = (await multi.ReadAsync<DemoTractorResponseModel>()).ToList();
-            var totalCount = (await multi.ReadAsync<int>()).FirstOrDefault();
+                var pendingClaimUploadList = (await multi.ReadAsync<DemoTractorResponseModel>()).ToList();
+                var totalCount = (await multi.ReadAsync<int>()).FirstOrDefault();
 
-            return (pendingClaimUploadList, totalCount);
+                return (pendingClaimUploadList, totalCount);
+            }
+            catch
+            {
+                return (new List<DemoTractorResponseModel>(), 0);
+            }
         }
 
         /// <summary>
@@ -128,14 +149,21 @@ namespace DealerSetu_Repositories.Repositories
         /// </summary>
         public async Task<List<FYearModel>> FiscalYearsRepo()
         {
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            var result = await connection.QueryAsync<FYearModel>(
-                "sp_DEMOTRAC_GetFiscalYears",
-                commandType: CommandType.StoredProcedure);
+                var result = await connection.QueryAsync<FYearModel>(
+                    "sp_DEMOTRAC_GetFiscalYears",
+                    commandType: CommandType.StoredProcedure);
 
-            return result.ToList();
+                return result.ToList();
+            }
+            catch
+            {
+                return new List<FYearModel>();
+            }
         }
 
         /// <summary>
@@ -143,29 +171,36 @@ namespace DealerSetu_Repositories.Repositories
         /// </summary>
         public async Task<int> SubmitDemoReqRepo(DemoReqSubmissionModel request, string empNo)
         {
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@RequestNo", request.RequestNo);
-            parameters.Add("@DealerNo", request.DealerNo);
-            parameters.Add("@ModelRequested", request.ModelRequested);
-            parameters.Add("@Reason", request.Reason);
-            parameters.Add("@SchemeType", request.SchemeType);
-            parameters.Add("@SpecialVariant", request.SpecialVariant);
-            parameters.Add("@ImplementRequired", request.ImplementRequired);
-            parameters.Add("@ImplementId", request.ImplementId);
-            parameters.Add("@Message", request.Message);
-            parameters.Add("@HpCategory", request.HpCategoryId);
-            parameters.Add("@EmpNo", empNo);
-            parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                var parameters = new DynamicParameters();
+                parameters.Add("@RequestNo", request.RequestNo);
+                parameters.Add("@DealerNo", request.DealerNo);
+                parameters.Add("@ModelRequested", request.ModelRequested);
+                parameters.Add("@Reason", request.Reason);
+                parameters.Add("@SchemeType", request.SchemeType);
+                parameters.Add("@SpecialVariant", request.SpecialVariant);
+                parameters.Add("@ImplementRequired", request.ImplementRequired);
+                parameters.Add("@ImplementId", request.ImplementId);
+                parameters.Add("@Message", request.Message);
+                parameters.Add("@HpCategory", request.HpCategoryId);
+                parameters.Add("@EmpNo", empNo);
+                parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-            await connection.ExecuteAsync(
-                "sp_DEMOTRAC_SubmitDemoRequest",
-                parameters,
-                commandType: CommandType.StoredProcedure);
+                await connection.ExecuteAsync(
+                    "sp_DEMOTRAC_SubmitDemoRequest",
+                    parameters,
+                    commandType: CommandType.StoredProcedure);
 
-            return parameters.Get<int>("@Result");
+                return parameters.Get<int>("@Result");
+            }
+            catch
+            {
+                return -1;
+            }
         }
 
         /// <summary>
@@ -173,16 +208,23 @@ namespace DealerSetu_Repositories.Repositories
         /// </summary>
         public async Task<DemoReqModel> DemoReqDataRepo(int reqId)
         {
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@reqId", reqId);
+                var parameters = new DynamicParameters();
+                parameters.Add("@reqId", reqId);
 
-            return await connection.QueryFirstOrDefaultAsync<DemoReqModel>(
-                "sp_DEMOTRAC_DemoReqData",
-                parameters,
-                commandType: CommandType.StoredProcedure);
+                return await connection.QueryFirstOrDefaultAsync<DemoReqModel>(
+                    "sp_DEMOTRAC_DemoReqData",
+                    parameters,
+                    commandType: CommandType.StoredProcedure);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         /// <summary>
@@ -190,23 +232,30 @@ namespace DealerSetu_Repositories.Repositories
         /// </summary>
         public async Task<int> DemoTractorApproveRejectRepo(FilterModel filter)
         {
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@ReqId", filter.ReqId);
-            parameters.Add("@IsApproved", filter.IsApproved);
-            parameters.Add("@EmpNo", filter.EmpNo);
-            parameters.Add("@RoleId", filter.RoleId);
-            parameters.Add("@RejectRemarks", filter.RejectRemarks ?? string.Empty);
-            parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                var parameters = new DynamicParameters();
+                parameters.Add("@ReqId", filter.ReqId);
+                parameters.Add("@IsApproved", filter.IsApproved);
+                parameters.Add("@EmpNo", filter.EmpNo);
+                parameters.Add("@RoleId", filter.RoleId);
+                parameters.Add("@RejectRemarks", filter.RejectRemarks ?? string.Empty);
+                parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-            await connection.ExecuteAsync(
-                "sp_DEMOTRAC_ApproveRejectReq",
-                parameters,
-                commandType: CommandType.StoredProcedure);
+                await connection.ExecuteAsync(
+                    "sp_DEMOTRAC_ApproveRejectReq",
+                    parameters,
+                    commandType: CommandType.StoredProcedure);
 
-            return parameters.Get<int>("@Result");
+                return parameters.Get<int>("@Result");
+            }
+            catch
+            {
+                return -1;
+            }
         }
 
         /// <summary>
@@ -214,25 +263,32 @@ namespace DealerSetu_Repositories.Repositories
         /// </summary>
         public async Task<string> UpdateDemoReqRepo(DemoReqUpdateModel request, string empNo)
         {
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@RequestNo", request.RequestNo);
-            parameters.Add("@EmpNo", empNo);
-            parameters.Add("@ModelRequested", request.ModelRequested);
-            parameters.Add("@Reason", request.Reason);
-            parameters.Add("@SchemeType", request.SchemeType);
-            parameters.Add("@SpecialVariant", request.SpecialVariant);
-            parameters.Add("@ImplementRequired", request.ImplementRequired);
-            parameters.Add("@ImplementId", request.ImplementId);
-            parameters.Add("@Message", request.Message);
-            parameters.Add("@HpCategoryId", request.HpCategoryId);
+                var parameters = new DynamicParameters();
+                parameters.Add("@RequestNo", request.RequestNo);
+                parameters.Add("@EmpNo", empNo);
+                parameters.Add("@ModelRequested", request.ModelRequested);
+                parameters.Add("@Reason", request.Reason);
+                parameters.Add("@SchemeType", request.SchemeType);
+                parameters.Add("@SpecialVariant", request.SpecialVariant);
+                parameters.Add("@ImplementRequired", request.ImplementRequired);
+                parameters.Add("@ImplementId", request.ImplementId);
+                parameters.Add("@Message", request.Message);
+                parameters.Add("@HpCategoryId", request.HpCategoryId);
 
-            return await connection.QuerySingleAsync<string>(
-                "sp_DEMOTRAC_UpdateReq",
-                parameters,
-                commandType: CommandType.StoredProcedure);
+                return await connection.QuerySingleAsync<string>(
+                    "sp_DEMOTRAC_UpdateReq",
+                    parameters,
+                    commandType: CommandType.StoredProcedure);
+            }
+            catch
+            {
+                return "Operation failed";
+            }
         }
 
         /// <summary>
@@ -240,46 +296,60 @@ namespace DealerSetu_Repositories.Repositories
         /// </summary>
         public async Task<List<DemoReqModel>> DemoActualClaimListRepo(FilterModel filter)
         {
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@ReqId", filter.ReqId, DbType.Int32);
-            parameters.Add("@EmpNo", filter.EmpNo, DbType.String);
-            parameters.Add("@RoleId", filter.RoleId, DbType.Int32);
+                var parameters = new DynamicParameters();
+                parameters.Add("@ReqId", filter.ReqId, DbType.Int32);
+                parameters.Add("@EmpNo", filter.EmpNo, DbType.String);
+                parameters.Add("@RoleId", filter.RoleId, DbType.Int32);
 
-            var result = await connection.QueryAsync<DemoReqModel>(
-                "sp_DEMOTRAC_DemoActualClaimList",
-                parameters,
-                commandType: CommandType.StoredProcedure);
+                var result = await connection.QueryAsync<DemoReqModel>(
+                    "sp_DEMOTRAC_DemoActualClaimList",
+                    parameters,
+                    commandType: CommandType.StoredProcedure);
 
-            return result.ToList();
+                return result.ToList();
+            }
+            catch
+            {
+                return new List<DemoReqModel>();
+            }
         }
 
         /// <summary>
         /// Adds basic demo actual claim with required documents
         /// </summary>
-        public async Task<int> AddBasicDemoActualClaimRepo(DemoReqModel docModel,bool BasicFlag)
+        public async Task<int> AddBasicDemoActualClaimRepo(DemoReqModel docModel, bool BasicFlag)
         {
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@RequestId", docModel.DemoRequestId);
-            parameters.Add("@Model", docModel.Model);
-            parameters.Add("@ChassisNo", docModel.ChassisNo);
-            parameters.Add("@EngineNo", docModel.EngineNo);
-            parameters.Add("@DateOfBilling", DateTime.ParseExact(docModel.DateOfBilling, "dd/MM/yyyy", CultureInfo.InvariantCulture));
-            parameters.Add("@InvoiceFile", docModel.InvoiceFile);
-            parameters.Add("@RCFile", docModel.RCFile);
-            parameters.Add("@InsuranceFile", docModel.InsuranceFile);
-            parameters.Add("@EmpNo", docModel.EmpNo);
-            parameters.Add("@BasicFlag", BasicFlag);
-            parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                var parameters = new DynamicParameters();
+                parameters.Add("@RequestId", docModel.DemoRequestId);
+                parameters.Add("@Model", docModel.Model);
+                parameters.Add("@ChassisNo", docModel.ChassisNo);
+                parameters.Add("@EngineNo", docModel.EngineNo);
+                parameters.Add("@DateOfBilling", DateTime.ParseExact(docModel.DateOfBilling, "dd/MM/yyyy", CultureInfo.InvariantCulture));
+                parameters.Add("@InvoiceFile", docModel.InvoiceFile);
+                parameters.Add("@RCFile", docModel.RCFile);
+                parameters.Add("@InsuranceFile", docModel.InsuranceFile);
+                parameters.Add("@EmpNo", docModel.EmpNo);
+                parameters.Add("@BasicFlag", BasicFlag);
+                parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-            await connection.ExecuteAsync("sp_DEMOTRAC_UploadDemoTractorDocs", parameters, commandType: CommandType.StoredProcedure);
+                await connection.ExecuteAsync("sp_DEMOTRAC_UploadDemoTractorDocs", parameters, commandType: CommandType.StoredProcedure);
 
-            return parameters.Get<int>("@Result");
+                return parameters.Get<int>("@Result");
+            }
+            catch
+            {
+                return -1;
+            }
         }
 
         /// <summary>
@@ -287,77 +357,91 @@ namespace DealerSetu_Repositories.Repositories
         /// </summary>
         public async Task<int> AddAllDemoActualClaimRepo(DemoReqModel docModel, bool BasicFlag)
         {
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@RequestId", docModel.DemoRequestId);
-            parameters.Add("@FileSale", docModel.FileSale);
-            parameters.Add("@FileTractor", docModel.FileTractor);
-            parameters.Add("@FilePicture", docModel.FilePicture);
-            parameters.Add("@FilePicTractor", docModel.FilePicTractor);
-            parameters.Add("@LogDemonsFile", docModel.LogDemons);
-            parameters.Add("@AffidavitFile", docModel.Affidavit);
-            parameters.Add("@SaleDeedFile", docModel.SaleDeed);
-            parameters.Add("@EmpNo", docModel.EmpNo);
-            parameters.Add("@BasicFlag", BasicFlag);
-            parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                var parameters = new DynamicParameters();
+                parameters.Add("@RequestId", docModel.DemoRequestId);
+                parameters.Add("@FileSale", docModel.FileSale);
+                parameters.Add("@FileTractor", docModel.FileTractor);
+                parameters.Add("@FilePicture", docModel.FilePicture);
+                parameters.Add("@FilePicTractor", docModel.FilePicTractor);
+                parameters.Add("@LogDemonsFile", docModel.LogDemons);
+                parameters.Add("@AffidavitFile", docModel.Affidavit);
+                parameters.Add("@SaleDeedFile", docModel.SaleDeed);
+                parameters.Add("@EmpNo", docModel.EmpNo);
+                parameters.Add("@BasicFlag", BasicFlag);
+                parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-            await connection.ExecuteAsync("sp_DEMOTRAC_UploadDemoTractorDocs", parameters, commandType: CommandType.StoredProcedure);
+                await connection.ExecuteAsync("sp_DEMOTRAC_UploadDemoTractorDocs", parameters, commandType: CommandType.StoredProcedure);
 
-            return parameters.Get<int>("@Result");
+                return parameters.Get<int>("@Result");
+            }
+            catch
+            {
+                return -1;
+            }
         }
 
 
         public async Task<int> UpdateDemoActualClaimRepo(DemoReqModel docModel, bool BasicFlag)
         {
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
-
-            var parameters = new DynamicParameters();
-            parameters.Add("@RequestId", docModel.DemoRequestId);
-
-            // Basic fields (nullable for partial updates)
-            parameters.Add("@Model", docModel.Model);
-            parameters.Add("@ChassisNo", docModel.ChassisNo);
-            parameters.Add("@EngineNo", docModel.EngineNo);
-
-            // Handle DateOfBilling conversion only if provided
-            if (!string.IsNullOrEmpty(docModel.DateOfBilling))
+            try
             {
-                parameters.Add("@DateOfBilling",
-                    DateTime.ParseExact(docModel.DateOfBilling, "dd/MM/yyyy", CultureInfo.InvariantCulture));
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                var parameters = new DynamicParameters();
+                parameters.Add("@RequestId", docModel.DemoRequestId);
+
+                // Basic fields (nullable for partial updates)
+                parameters.Add("@Model", docModel.Model);
+                parameters.Add("@ChassisNo", docModel.ChassisNo);
+                parameters.Add("@EngineNo", docModel.EngineNo);
+
+                // Handle DateOfBilling conversion only if provided
+                if (!string.IsNullOrEmpty(docModel.DateOfBilling))
+                {
+                    parameters.Add("@DateOfBilling",
+                        DateTime.ParseExact(docModel.DateOfBilling, "dd/MM/yyyy", CultureInfo.InvariantCulture));
+                }
+                else
+                {
+                    parameters.Add("@DateOfBilling", DBNull.Value);
+                }
+
+                // Basic document files
+                parameters.Add("@InvoiceFile", docModel.InvoiceFile);
+                parameters.Add("@RCFile", docModel.RCFile);
+                parameters.Add("@InsuranceFile", docModel.InsuranceFile);
+
+                // Additional document files
+                parameters.Add("@FileSale", docModel.FileSale);
+                parameters.Add("@FileTractor", docModel.FileTractor);
+                parameters.Add("@FilePicture", docModel.FilePicture);
+                parameters.Add("@FilePicTractor", docModel.FilePicTractor);
+                parameters.Add("@LogDemonsFile", docModel.LogDemons);
+                parameters.Add("@AffidavitFile", docModel.Affidavit);
+                parameters.Add("@SaleDeedFile", docModel.SaleDeed);
+
+                // Audit fields
+                parameters.Add("@EmpNo", docModel.EmpNo);
+                parameters.Add("@BasicFlag", BasicFlag);
+                // Output parameter
+                parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                await connection.ExecuteAsync("sp_DEMOTRAC_UploadDemoTractorDocs",
+                    parameters,
+                    commandType: CommandType.StoredProcedure);
+
+                return parameters.Get<int>("@Result");
             }
-            else
+            catch
             {
-                parameters.Add("@DateOfBilling", DBNull.Value);
+                return -1;
             }
-
-            // Basic document files
-            parameters.Add("@InvoiceFile", docModel.InvoiceFile);
-            parameters.Add("@RCFile", docModel.RCFile );
-            parameters.Add("@InsuranceFile", docModel.InsuranceFile);
-
-            // Additional document files
-            parameters.Add("@FileSale", docModel.FileSale);
-            parameters.Add("@FileTractor", docModel.FileTractor);
-            parameters.Add("@FilePicture", docModel.FilePicture);
-            parameters.Add("@FilePicTractor", docModel.FilePicTractor);
-            parameters.Add("@LogDemonsFile", docModel.LogDemons);
-            parameters.Add("@AffidavitFile", docModel.Affidavit);
-            parameters.Add("@SaleDeedFile", docModel.SaleDeed);
-
-            // Audit fields
-            parameters.Add("@EmpNo", docModel.EmpNo);
-            parameters.Add("@BasicFlag", BasicFlag);
-            // Output parameter
-            parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-            await connection.ExecuteAsync("sp_DEMOTRAC_UploadDemoTractorDocs",
-                parameters,
-                commandType: CommandType.StoredProcedure);
-
-            return parameters.Get<int>("@Result");
         }
 
         /// <summary>
@@ -365,18 +449,25 @@ namespace DealerSetu_Repositories.Repositories
         /// </summary>
         public async Task<List<DemoReqModel>> GetDemoTractorDoc(FilterModel filter)
         {
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@reqId", filter.ReqId);
+                var parameters = new DynamicParameters();
+                parameters.Add("@reqId", filter.ReqId);
 
-            var result = await connection.QueryAsync<DemoReqModel>(
-                "sp_DEMOTRAC_GetDemoTractorDoc",
-                parameters,
-                commandType: CommandType.StoredProcedure);
+                var result = await connection.QueryAsync<DemoReqModel>(
+                    "sp_DEMOTRAC_GetDemoTractorDoc",
+                    parameters,
+                    commandType: CommandType.StoredProcedure);
 
-            return result.ToList();
+                return result.ToList();
+            }
+            catch
+            {
+                return new List<DemoReqModel>();
+            }
         }
 
         /// <summary>
@@ -384,23 +475,30 @@ namespace DealerSetu_Repositories.Repositories
         /// </summary>
         public async Task<int> DemoTractorApproveRejectClaimRepo(FilterModel filter)
         {
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@ReqId", filter.ReqId);
-            parameters.Add("@IsApproved", filter.IsApproved);
-            parameters.Add("@EmpNo", filter.EmpNo);
-            parameters.Add("@RoleId", filter.RoleId);
-            parameters.Add("@RejectRemarks", filter.RejectRemarks ?? string.Empty);
-            parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                var parameters = new DynamicParameters();
+                parameters.Add("@ReqId", filter.ReqId);
+                parameters.Add("@IsApproved", filter.IsApproved);
+                parameters.Add("@EmpNo", filter.EmpNo);
+                parameters.Add("@RoleId", filter.RoleId);
+                parameters.Add("@RejectRemarks", filter.RejectRemarks ?? string.Empty);
+                parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-            await connection.ExecuteAsync(
-                "sp_DEMOTRAC_ApproveRejectClaim",
-                parameters,
-                commandType: CommandType.StoredProcedure);
+                await connection.ExecuteAsync(
+                    "sp_DEMOTRAC_ApproveRejectClaim",
+                    parameters,
+                    commandType: CommandType.StoredProcedure);
 
-            return parameters.Get<int>("@Result");
+                return parameters.Get<int>("@Result");
+            }
+            catch
+            {
+                return -1;
+            }
         }
 
         /// <summary>
@@ -408,24 +506,31 @@ namespace DealerSetu_Repositories.Repositories
         /// </summary>
         public async Task<int> AddActualDemoRemarkRepo(AddDemoTracRemarksModel request)
         {
-            if (!DateTime.TryParseExact(request.RemarksDate, "MM/dd/yyyy",
-                CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedDate))
+            try
             {
-                throw new ArgumentException("Invalid date format. Expected MM/dd/yyyy format.");
+                if (!DateTime.TryParseExact(request.RemarksDate, "MM/dd/yyyy",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedDate))
+                {
+                    return -1;
+                }
+
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                var parameters = new DynamicParameters();
+                parameters.Add("@Id", request.RequestId);
+                parameters.Add("@Remarks", request.Remarks);
+                parameters.Add("@RemarksDate", parsedDate);
+
+                return await connection.QuerySingleAsync<int>(
+                    "sp_DEMOTRAC_AddRemarks",
+                    parameters,
+                    commandType: CommandType.StoredProcedure);
             }
-
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
-
-            var parameters = new DynamicParameters();
-            parameters.Add("@Id", request.RequestId);
-            parameters.Add("@Remarks", request.Remarks);
-            parameters.Add("@RemarksDate", parsedDate);
-
-            return await connection.QuerySingleAsync<int>(
-                "sp_DEMOTRAC_AddRemarks",
-                parameters,
-                commandType: CommandType.StoredProcedure);
+            catch
+            {
+                return -1;
+            }
         }
     }
 }

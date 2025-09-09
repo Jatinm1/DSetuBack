@@ -32,12 +32,12 @@ namespace DealerSetu_Services.Services
             {
                 var requestTypes = await _requestRepository.RequestTypeFilterRepo();
                 return requestTypes == null
-                    ? CreateErrorResponse("Repository returned null result for request types", "500")
+                    ? CreateErrorResponse("Unable to retrieve request types", "500")
                     : CreateSuccessResponse(requestTypes, "Request types retrieved successfully");
             }
-            catch (Exception ex)
+            catch
             {
-                return CreateErrorResponse($"Error retrieving request types: {ex.Message}", "500");
+                return CreateErrorResponse("An error occurred while retrieving request types", "500");
             }
         }
 
@@ -50,12 +50,12 @@ namespace DealerSetu_Services.Services
             {
                 var hpCategories = await _requestRepository.HPCategoryFilterRepo();
                 return hpCategories == null
-                    ? CreateErrorResponse("Repository returned null result for HP categories", "500")
+                    ? CreateErrorResponse("Unable to retrieve HP categories", "500")
                     : CreateSuccessResponse(hpCategories, "HP categories retrieved successfully");
             }
-            catch (Exception ex)
+            catch
             {
-                return CreateErrorResponse($"Error retrieving HP categories: {ex.Message}", "500");
+                return CreateErrorResponse("An error occurred while retrieving HP categories", "500");
             }
         }
 
@@ -73,17 +73,13 @@ namespace DealerSetu_Services.Services
                 var submissionResult = await _requestRepository.SubmitRequestAsync(request, empNo, roleId);
 
                 if (submissionResult == null || submissionResult.RequestId <= 0)
-                    return CreateErrorResponse("Invalid request ID generated during submission", "500");
+                    return CreateErrorResponse("Request submission failed", "500");
 
                 return CreateSuccessResponse($"Your RequestId is : {submissionResult.RequestId}", "Request submitted successfully");
             }
-            catch (ArgumentException ex)
+            catch
             {
-                return CreateErrorResponse($"Invalid argument: {ex.Message}", "400");
-            }
-            catch (Exception ex)
-            {
-                return CreateErrorResponse($"Error submitting request: {ex.Message}", "500");
+                return CreateErrorResponse("Request submission failed", "500");
             }
         }
 
@@ -104,7 +100,7 @@ namespace DealerSetu_Services.Services
                 var (requests, totalCount) = await _requestRepository.RequestListRepo(filter, pageIndex, pageSize);
 
                 if (requests == null)
-                    return CreateErrorResponse("Repository returned null result for request list", "500");
+                    return CreateErrorResponse("Unable to retrieve requests", "500");
 
                 return new ServiceResponse
                 {
@@ -116,9 +112,9 @@ namespace DealerSetu_Services.Services
                     Status = "Success"
                 };
             }
-            catch (Exception ex)
+            catch
             {
-                return CreateErrorResponse($"Error retrieving requests: {ex.Message}", "500");
+                return CreateErrorResponse("An error occurred while retrieving requests", "500");
             }
         }
 
@@ -129,27 +125,34 @@ namespace DealerSetu_Services.Services
         /// </summary>
         private static ServiceResponse ValidateSubmissionParameters(RequestSubmissionModel request, string empNo, string roleId)
         {
-            if (string.IsNullOrWhiteSpace(request.RequestTypeId))
-                return CreateErrorResponse("Request type ID is required", "400");
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.RequestTypeId))
+                    return CreateErrorResponse("Request type ID is required", "400");
 
-            if (string.IsNullOrWhiteSpace(request.Message))
-                return CreateErrorResponse("Message is required", "400");
+                if (string.IsNullOrWhiteSpace(request.Message))
+                    return CreateErrorResponse("Message is required", "400");
 
-            if (request.Message.Length > MAX_MESSAGE_LENGTH)
-                return CreateErrorResponse($"Message cannot exceed {MAX_MESSAGE_LENGTH} characters", "400");
+                if (request.Message.Length > MAX_MESSAGE_LENGTH)
+                    return CreateErrorResponse($"Message cannot exceed {MAX_MESSAGE_LENGTH} characters", "400");
 
-            if (string.IsNullOrWhiteSpace(empNo))
-                return CreateErrorResponse("Employee number is required", "400");
+                if (string.IsNullOrWhiteSpace(empNo))
+                    return CreateErrorResponse("Employee number is required", "400");
 
-            if (empNo.Length > MAX_EMPLOYEE_NUMBER_LENGTH)
-                return CreateErrorResponse($"Employee number cannot exceed {MAX_EMPLOYEE_NUMBER_LENGTH} characters", "400");
+                if (empNo.Length > MAX_EMPLOYEE_NUMBER_LENGTH)
+                    return CreateErrorResponse($"Employee number cannot exceed {MAX_EMPLOYEE_NUMBER_LENGTH} characters", "400");
 
-            if (ContainsInvalidCharacters(request.RequestTypeId) ||
-                ContainsInvalidCharacters(request.HpCategory) ||
-                ContainsInvalidCharacters(empNo))
-                return CreateErrorResponse("Invalid characters detected in input parameters", "400");
+                if (ContainsInvalidCharacters(request.RequestTypeId) ||
+                    ContainsInvalidCharacters(request.HpCategory) ||
+                    ContainsInvalidCharacters(empNo))
+                    return CreateErrorResponse("Invalid characters detected in input parameters", "400");
 
-            return null;
+                return null;
+            }
+            catch
+            {
+                return CreateErrorResponse("Invalid input parameters", "400");
+            }
         }
 
         /// <summary>
@@ -157,11 +160,18 @@ namespace DealerSetu_Services.Services
         /// </summary>
         private static bool ContainsInvalidCharacters(string input)
         {
-            if (string.IsNullOrEmpty(input))
-                return false;
+            try
+            {
+                if (string.IsNullOrEmpty(input))
+                    return false;
 
-            var dangerousPatterns = new[] { "<script", "javascript:", "onload=", "onerror=", "'", "\"", ";", "--", "/*", "*/" };
-            return dangerousPatterns.Any(pattern => input.ToLowerInvariant().Contains(pattern.ToLowerInvariant()));
+                var dangerousPatterns = new[] { "<script", "javascript:", "onload=", "onerror=", "'", "\"", ";", "--", "/*", "*/" };
+                return dangerousPatterns.Any(pattern => input.ToLowerInvariant().Contains(pattern.ToLowerInvariant()));
+            }
+            catch
+            {
+                return true;
+            }
         }
 
         /// <summary>
@@ -169,14 +179,28 @@ namespace DealerSetu_Services.Services
         /// </summary>
         private static ServiceResponse CreateSuccessResponse(object result, string message)
         {
-            return new ServiceResponse
+            try
             {
-                isError = false,
-                result = result,
-                Message = message,
-                Status = "Success",
-                Code = "200"
-            };
+                return new ServiceResponse
+                {
+                    isError = false,
+                    result = result,
+                    Message = message,
+                    Status = "Success",
+                    Code = "200"
+                };
+            }
+            catch
+            {
+                return new ServiceResponse
+                {
+                    isError = false,
+                    result = result,
+                    Message = "Operation completed",
+                    Status = "Success",
+                    Code = "200"
+                };
+            }
         }
 
         /// <summary>
@@ -184,16 +208,32 @@ namespace DealerSetu_Services.Services
         /// </summary>
         private static ServiceResponse CreateErrorResponse(string message, string code)
         {
-            return new ServiceResponse
+            try
             {
-                isError = true,
-                Error = message,
-                Message = "Operation failed",
-                Code = code,
-                Status = "Error",
-                result = null,
-                totalCount = 0
-            };
+                return new ServiceResponse
+                {
+                    isError = true,
+                    Error = message,
+                    Message = "Operation failed",
+                    Code = code,
+                    Status = "Error",
+                    result = null,
+                    totalCount = 0
+                };
+            }
+            catch
+            {
+                return new ServiceResponse
+                {
+                    isError = true,
+                    Error = "An error occurred",
+                    Message = "Operation failed",
+                    Code = "500",
+                    Status = "Error",
+                    result = null,
+                    totalCount = 0
+                };
+            }
         }
 
         #endregion

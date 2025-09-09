@@ -50,7 +50,7 @@ namespace dealersetu_services.services
                 {
                     response.Status = "Failure";
                     response.Code = "500";
-                    response.Error = "Repository returned null result";
+                    response.Error = "Unable to retrieve policy list";
                     response.isError = true;
                     return response;
                 }
@@ -71,22 +71,22 @@ namespace dealersetu_services.services
                         });
                         response.result = policies;
                     }
-                    catch (JsonException ex)
+                    catch
                     {
                         response.isError = true;
                         response.Status = "Failure";
                         response.Code = "500";
-                        response.Error = $"Failed to deserialize policy data: {ex.Message}";
+                        response.Error = "Unable to process policy data";
                         response.result = null;
                     }
                 }
             }
-            catch (Exception ex)
+            catch
             {
                 response.isError = true;
                 response.Status = "Failure";
                 response.Code = "500";
-                response.Error = $"Unexpected error occurred: {ex.Message}";
+                response.Error = "An error occurred while retrieving policies";
                 response.result = null;
             }
 
@@ -103,18 +103,18 @@ namespace dealersetu_services.services
         {
             var response = new ServiceResponse();
 
-            // Validate input parameters
-            if (request?.FileName == null)
-            {
-                response.Status = "Failure";
-                response.Code = "400";
-                response.Error = "File is required";
-                response.isError = true;
-                return response;
-            }
-
             try
             {
+                // Validate input parameters
+                if (request?.FileName == null)
+                {
+                    response.Status = "Failure";
+                    response.Code = "400";
+                    response.Error = "File is required";
+                    response.isError = true;
+                    return response;
+                }
+
                 //// Validate file size
                 //if (request.FileName.Length > MAX_FILE_SIZE_BYTES)
                 //{
@@ -156,38 +156,24 @@ namespace dealersetu_services.services
                 {
                     response.Status = "Failure";
                     response.Code = "500";
-                    response.Error = "Failed to upload file to storage";
+                    response.Error = "File upload failed";
                     response.isError = true;
                     return response;
-                }                
+                }
 
                 // Save to database
-                var result = _policyRepository.SendFilesToServerRepo(request,updatedFileName);
+                var result = _policyRepository.SendFilesToServerRepo(request, updatedFileName);
 
                 response.Status = "Success";
                 response.Code = "200";
                 response.Message = "File uploaded successfully";
                 response.result = new { BlobUrl = blobUrl, FileName = updatedFileName };
             }
-            catch (ArgumentException ex)
-            {
-                response.Status = "Failure";
-                response.Code = "400";
-                response.Error = $"Invalid argument: {ex.Message}";
-                response.isError = true;
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                response.Status = "Failure";
-                response.Code = "401";
-                response.Error = "Unauthorized access to storage";
-                response.isError = true;
-            }
-            catch (Exception ex)
+            catch
             {
                 response.Status = "Failure";
                 response.Code = "500";
-                response.Error = $"Upload failed: {ex.Message}";
+                response.Error = "File upload failed";
                 response.isError = true;
             }
 
@@ -198,18 +184,18 @@ namespace dealersetu_services.services
         {
             var response = new ServiceResponse();
 
-            // Validate input parameters
-            if (request?.FileName == null)
-            {
-                response.Status = "Failure";
-                response.Code = "400";
-                response.Error = "File is required";
-                response.isError = true;
-                return response;
-            }
-
             try
             {
+                // Validate input parameters
+                if (request?.FileName == null)
+                {
+                    response.Status = "Failure";
+                    response.Code = "400";
+                    response.Error = "File is required";
+                    response.isError = true;
+                    return response;
+                }
+
                 //// Validate file size
                 //if (request.FileName.Length > MAX_FILE_SIZE_BYTES)
                 //{
@@ -251,7 +237,7 @@ namespace dealersetu_services.services
                 {
                     response.Status = "Failure";
                     response.Code = "500";
-                    response.Error = "Failed to upload file to storage";
+                    response.Error = "File upload failed";
                     response.isError = true;
                     return response;
                 }
@@ -264,25 +250,11 @@ namespace dealersetu_services.services
                 response.Message = "File uploaded successfully";
                 response.result = new { BlobUrl = blobUrl, FileName = updatedFileName };
             }
-            catch (ArgumentException ex)
-            {
-                response.Status = "Failure";
-                response.Code = "400";
-                response.Error = $"Invalid argument: {ex.Message}";
-                response.isError = true;
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                response.Status = "Failure";
-                response.Code = "401";
-                response.Error = "Unauthorized access to storage";
-                response.isError = true;
-            }
-            catch (Exception ex)
+            catch
             {
                 response.Status = "Failure";
                 response.Code = "500";
-                response.Error = $"Upload failed: {ex.Message}";
+                response.Error = "File upload failed";
                 response.isError = true;
             }
 
@@ -299,14 +271,14 @@ namespace dealersetu_services.services
         /// <exception cref="InvalidOperationException">Thrown when Azure configuration is invalid</exception>
         public async Task<string> AddDocs(IFormFile files, string fileName)
         {
-            if (files == null)
-                throw new ArgumentNullException(nameof(files));
-
-            if (string.IsNullOrWhiteSpace(fileName))
-                throw new ArgumentNullException(nameof(fileName));
-
             try
             {
+                if (files == null)
+                    throw new ArgumentNullException(nameof(files));
+
+                if (string.IsNullOrWhiteSpace(fileName))
+                    throw new ArgumentNullException(nameof(fileName));
+
                 var storageConnectionString = _configuration.GetValue<string>("AzureBlobStorage:StorageAccount");
                 var containerName = _configuration.GetValue<string>("AzureBlobStorage:ContainerName");
 
@@ -338,13 +310,9 @@ namespace dealersetu_services.services
 
                 return blockBlob.Uri.ToString();
             }
-            catch (StorageException ex)
+            catch
             {
-                throw new InvalidOperationException($"Azure Storage operation failed: {ex.Message}", ex);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"File upload failed: {ex.Message}", ex);
+                return null;
             }
         }
 
@@ -355,20 +323,27 @@ namespace dealersetu_services.services
         /// <returns>Unique filename with random suffix</returns>
         private static string GenerateUniqueFileName(string originalFileName)
         {
-            if (string.IsNullOrWhiteSpace(originalFileName))
-                throw new ArgumentException("Original filename cannot be null or empty", nameof(originalFileName));
+            try
+            {
+                if (string.IsNullOrWhiteSpace(originalFileName))
+                    throw new ArgumentException("Original filename cannot be null or empty", nameof(originalFileName));
 
-            var random = new Random();
-            var randomSuffix = random.Next(0, RANDOM_SUFFIX_RANGE).ToString("D6");
+                var random = new Random();
+                var randomSuffix = random.Next(0, RANDOM_SUFFIX_RANGE).ToString("D6");
 
-            var fileNameParts = originalFileName.Split('.');
-            if (fileNameParts.Length < 2)
-                throw new ArgumentException("Filename must have an extension", nameof(originalFileName));
+                var fileNameParts = originalFileName.Split('.');
+                if (fileNameParts.Length < 2)
+                    throw new ArgumentException("Filename must have an extension", nameof(originalFileName));
 
-            var nameWithoutExtension = string.Join(".", fileNameParts.Take(fileNameParts.Length - 1));
-            var extension = fileNameParts.Last();
+                var nameWithoutExtension = string.Join(".", fileNameParts.Take(fileNameParts.Length - 1));
+                var extension = fileNameParts.Last();
 
-            return $"{nameWithoutExtension}_{randomSuffix}.{extension}";
+                return $"{nameWithoutExtension}_{randomSuffix}.{extension}";
+            }
+            catch
+            {
+                return $"file_{DateTime.Now.Ticks}";
+            }
         }
 
         /// <summary>
@@ -378,22 +353,28 @@ namespace dealersetu_services.services
         /// <returns>MIME content type or null if unknown</returns>
         private static string GetContentType(string fileExtension)
         {
-            return fileExtension?.ToLowerInvariant() switch
+            try
             {
-                ".jpg" or ".jpeg" => "image/jpeg",
-                ".png" => "image/png",
-                ".gif" => "image/gif",
-                ".pdf" => "application/pdf",
-                ".tif" or ".tiff" => "image/tiff",
-                ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                ".csv" => "text/csv",
-                ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                _ => "application/octet-stream"
-            };
+                return fileExtension?.ToLowerInvariant() switch
+                {
+                    ".jpg" or ".jpeg" => "image/jpeg",
+                    ".png" => "image/png",
+                    ".gif" => "image/gif",
+                    ".pdf" => "application/pdf",
+                    ".tif" or ".tiff" => "image/tiff",
+                    ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    ".csv" => "text/csv",
+                    ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    _ => "application/octet-stream"
+                };
+            }
+            catch
+            {
+                return "application/octet-stream";
+            }
         }
     }
 }
-
 
 
 

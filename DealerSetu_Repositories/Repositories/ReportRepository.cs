@@ -24,25 +24,32 @@ namespace DealerSetu_Repositories.Repositories
 
         public ReportRepository(IConfiguration configuration, Utility utility)
         {
-            _connectionString = configuration?.GetConnectionString("dbDealerSetuEntities")
-                ?? throw new InvalidOperationException("Connection string 'dbDealerSetuEntities' not found.");
-            _utility = utility ?? throw new ArgumentNullException(nameof(utility));
+            try
+            {
+                _connectionString = configuration?.GetConnectionString("dbDealerSetuEntities")
+                    ?? throw new InvalidOperationException("Connection string 'dbDealerSetuEntities' not found.");
+                _utility = utility ?? throw new ArgumentNullException(nameof(utility));
+            }
+            catch (Exception)
+            {
+                throw new InvalidOperationException("Configuration error occurred");
+            }
         }
 
         public async Task<(List<ReportModel> Reports, int TotalCount)> RequestSectionReportRepo(
             FilterModel filter, int pageIndex, int pageSize)
         {
-            if (filter == null)
-                throw new ArgumentNullException(nameof(filter));
-
-            if (pageIndex < 0)
-                throw new ArgumentException("Page index must be non-negative", nameof(pageIndex));
-
-            if (pageSize <= 0)
-                throw new ArgumentException("Page size must be positive", nameof(pageSize));
-
             try
             {
+                if (filter == null)
+                    throw new ArgumentNullException(nameof(filter));
+
+                if (pageIndex < 0)
+                    throw new ArgumentException("Page index must be non-negative", nameof(pageIndex));
+
+                if (pageSize <= 0)
+                    throw new ArgumentException("Page size must be positive", nameof(pageSize));
+
                 using var connection = new SqlConnection(_connectionString);
                 var parameters = new DynamicParameters();
 
@@ -52,7 +59,7 @@ namespace DealerSetu_Repositories.Repositories
                     parameters.Add("@ToDate", filter.To.Value.ToString("yyyy-MM-dd"));
                 if (!string.IsNullOrEmpty(filter.EmpNo))
                     parameters.Add("@EmpNo", filter.EmpNo);
-                if (filter.RoleId!=null && !string.IsNullOrEmpty(filter.RoleId))
+                if (filter.RoleId != null && !string.IsNullOrEmpty(filter.RoleId))
                     parameters.Add("@RoleId", filter.RoleId);
 
                 parameters.Add("@PageIndex", pageIndex);
@@ -68,27 +75,19 @@ namespace DealerSetu_Repositories.Repositories
 
                 return (reports, totalCount);
             }
-            catch (ArgumentException)
+            catch (Exception)
             {
-                throw;
-            }
-            catch (SqlException ex)
-            {
-                throw new InvalidOperationException("Database error occurred while retrieving report data", ex);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Unexpected error occurred while processing report request", ex);
+                throw new InvalidOperationException("Failed to retrieve report data");
             }
         }
 
         public async Task<DemoTractor> RejectedRequestReportRepo(FilterModel filter)
         {
-            if (filter == null)
-                throw new ArgumentNullException(nameof(filter));
-
             try
             {
+                if (filter == null)
+                    throw new ArgumentNullException(nameof(filter));
+
                 using var connection = new SqlConnection(_connectionString);
                 await connection.OpenAsync();
 
@@ -118,27 +117,19 @@ namespace DealerSetu_Repositories.Repositories
                     democount = demoTractors.Count
                 };
             }
-            catch (ArgumentException)
+            catch (Exception)
             {
-                throw;
-            }
-            catch (SqlException ex)
-            {
-                throw new InvalidOperationException("Database error occurred while retrieving rejected request data", ex);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Unexpected error occurred while processing rejected request report", ex);
+                throw new InvalidOperationException("Failed to retrieve rejected request report");
             }
         }
 
         public async Task<List<DealerstateModel>> NewDealerStatewiseReportRepo(int fy)
         {
-            if (fy <= 0)
-                throw new ArgumentOutOfRangeException(nameof(fy), "Fiscal year must be a positive integer");
-
             try
             {
+                if (fy <= 0)
+                    throw new ArgumentOutOfRangeException(nameof(fy), "Fiscal year must be a positive integer");
+
                 using var connection = new SqlConnection(_connectionString);
                 var parameters = new DynamicParameters();
                 parameters.Add("@fy", fy);
@@ -150,35 +141,26 @@ namespace DealerSetu_Repositories.Repositories
 
                 return result.ToList();
             }
-            catch (ArgumentOutOfRangeException)
+            catch (Exception)
             {
-                throw;
-            }
-            catch (SqlException ex)
-            {
-                throw new InvalidOperationException($"Database error occurred while retrieving state-wise data for fiscal year {fy}", ex);
-            }
-            catch (Exception ex)
-            {
-                _utility.ExcepLog(ex);
-                throw new InvalidOperationException($"Unexpected error occurred while processing state-wise report for fiscal year {fy}", ex);
+                throw new InvalidOperationException("Failed to retrieve statewise report");
             }
         }
 
         public async Task<(List<DemoListModel> DemoRequests, int TotalCount)> DemoTractorReportRepo(
             FilterModel filter, int pageIndex, int pageSize)
         {
-            if (filter == null)
-                throw new ArgumentNullException(nameof(filter));
-
-            if (pageIndex < 0)
-                throw new ArgumentException("Page index must be non-negative", nameof(pageIndex));
-
-            if (pageSize <= 0)
-                throw new ArgumentException("Page size must be positive", nameof(pageSize));
-
             try
             {
+                if (filter == null)
+                    throw new ArgumentNullException(nameof(filter));
+
+                if (pageIndex < 0)
+                    throw new ArgumentException("Page index must be non-negative", nameof(pageIndex));
+
+                if (pageSize <= 0)
+                    throw new ArgumentException("Page size must be positive", nameof(pageSize));
+
                 using var connection = new SqlConnection(_connectionString);
                 var parameters = new DynamicParameters();
 
@@ -202,34 +184,26 @@ namespace DealerSetu_Repositories.Repositories
 
                 return (demoRequests, totalCount);
             }
-            catch (ArgumentException)
+            catch (Exception)
             {
-                throw;
-            }
-            catch (SqlException ex)
-            {
-                throw new InvalidOperationException("Database error occurred while retrieving demo tractor data", ex);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Unexpected error occurred while processing demo tractor report", ex);
+                throw new InvalidOperationException("Failed to retrieve demo tractor report");
             }
         }
 
         public async Task<(List<NewDealerActivity> NewDealerActivities, int TotalCount)> NewDealerActivityReportRepo(
             FilterModel filter, bool? pendingByHO, int pageIndex, int pageSize)
         {
-            if (filter == null)
-                throw new ArgumentNullException(nameof(filter));
-
-            if (pageIndex < 0)
-                throw new ArgumentException("Page index must be non-negative", nameof(pageIndex));
-
-            if (pageSize <= 0)
-                throw new ArgumentException("Page size must be positive", nameof(pageSize));
-
             try
             {
+                if (filter == null)
+                    throw new ArgumentNullException(nameof(filter));
+
+                if (pageIndex < 0)
+                    throw new ArgumentException("Page index must be non-negative", nameof(pageIndex));
+
+                if (pageSize <= 0)
+                    throw new ArgumentException("Page size must be positive", nameof(pageSize));
+
                 using var connection = new SqlConnection(_connectionString);
                 var parameters = new DynamicParameters();
 
@@ -256,34 +230,26 @@ namespace DealerSetu_Repositories.Repositories
 
                 return (activities, totalCount);
             }
-            catch (ArgumentException)
+            catch (Exception)
             {
-                throw;
-            }
-            catch (SqlException ex)
-            {
-                throw new InvalidOperationException("Database error occurred while retrieving new dealer activity data", ex);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Unexpected error occurred while processing new dealer activity report", ex);
+                throw new InvalidOperationException("Failed to retrieve new dealer activity report");
             }
         }
 
         public async Task<(List<NewDealerActivityClaim> NewDealerClaimActivities, int TotalCount)> NewDealerClaimReportRepo(
             FilterModel filter, int pageIndex, int pageSize)
         {
-            if (filter == null)
-                throw new ArgumentNullException(nameof(filter));
-
-            if (pageIndex < 0)
-                throw new ArgumentException("Page index must be non-negative", nameof(pageIndex));
-
-            if (pageSize <= 0)
-                throw new ArgumentException("Page size must be positive", nameof(pageSize));
-
             try
             {
+                if (filter == null)
+                    throw new ArgumentNullException(nameof(filter));
+
+                if (pageIndex < 0)
+                    throw new ArgumentException("Page index must be non-negative", nameof(pageIndex));
+
+                if (pageSize <= 0)
+                    throw new ArgumentException("Page size must be positive", nameof(pageSize));
+
                 using var connection = new SqlConnection(_connectionString);
                 var parameters = new DynamicParameters();
 
@@ -309,17 +275,9 @@ namespace DealerSetu_Repositories.Repositories
 
                 return (claimActivities, totalCount);
             }
-            catch (ArgumentException)
+            catch (Exception)
             {
-                throw;
-            }
-            catch (SqlException ex)
-            {
-                throw new InvalidOperationException("Database error occurred while retrieving new dealer claim data", ex);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Unexpected error occurred while processing new dealer claim report", ex);
+                throw new InvalidOperationException("Failed to retrieve new dealer claim report");
             }
         }
     }

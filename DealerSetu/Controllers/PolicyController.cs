@@ -33,13 +33,20 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                var result = _policyService.GetPolicyListService();
-                return Json(result);
+                try
+                {
+                    var result = _policyService.GetPolicyListService();
+                    return Json(result);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("PolicyController", "Error in GetPolicyList", ex);
+                    return Json(new { error = "An error occurred while retrieving policy list." });
+                }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError("PolicyController", "Error in GetPolicyList", ex);
-                return Json(new { error = ex.Message });
+                return Json(new { error = "An internal server error occurred." });
             }
         }
 
@@ -48,14 +55,21 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                // Call the service to handle file upload
-                var result = await _policyService.SendPolicytoServerService(model);
-                return Ok(result);
+                try
+                {
+                    // Call the service to handle file upload
+                    var result = await _policyService.SendPolicytoServerService(model);
+                    return Ok(result);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("PolicyController", "Error in UploadPolicyPdf", ex);
+                    return StatusCode(500, new { error = "An error occurred while uploading the policy PDF." });
+                }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError("PolicyController", "Error in UploadPolicyPdf", ex);
-                return StatusCode(500, new { error = "An error occurred while uploading the policy PDF.", details = ex.Message });
+                return StatusCode(500, new { error = "An internal server error occurred." });
             }
         }
 
@@ -64,14 +78,21 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                // Call the service to handle file upload
-                var result = await _policyService.SendFiletoServerService(model);
-                return Ok(result);
+                try
+                {
+                    // Call the service to handle file upload
+                    var result = await _policyService.SendFiletoServerService(model);
+                    return Ok(result);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("PolicyController", "Error in UploadPolicyPdf", ex);
+                    return StatusCode(500, new { error = "An error occurred while uploading the file." });
+                }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError("PolicyController", "Error in UploadPolicyPdf", ex);
-                return StatusCode(500, new { error = "An error occurred while uploading the policy PDF.", details = ex.Message });
+                return StatusCode(500, new { error = "An internal server error occurred." });
             }
         }
 
@@ -80,36 +101,43 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(fileName))
+                try
                 {
-                    return BadRequest(new { error = "Filename cannot be empty or null." });
+                    if (string.IsNullOrWhiteSpace(fileName))
+                    {
+                        return BadRequest(new { error = "Filename cannot be empty or null." });
+                    }
+                    // Validate the filename format
+                    if (!_utility.IsValidFileName(fileName))
+                    {
+                        return BadRequest(new { error = "Invalid filename format." });
+                    }
+                    // Generate download URL
+                    var downloadUrl = await _masterService.GenerateDownloadUrlAsync(fileName);
+                    if (string.IsNullOrEmpty(downloadUrl))
+                    {
+                        return NotFound(new { error = "File not found or unavailable." });
+                    }
+                    var response = await _httpClient.GetAsync(downloadUrl);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        return StatusCode((int)response.StatusCode, new { error = "Failed to retrieve file" });
+                    }
+                    var content = await response.Content.ReadAsByteArrayAsync();
+                    // Determine file content type
+                    string contentType = _utility.GetContentType(fileName);
+                    Response.Headers.Add("Content-Disposition", $"inline; filename=\"{fileName}\"");
+                    return File(content, contentType, fileName);
                 }
-                // Validate the filename format
-                if (!_utility.IsValidFileName(fileName))
+                catch (Exception ex)
                 {
-                    return BadRequest(new { error = "Invalid filename format." });
+                    _logger.LogError("PolicyController", "Error in ViewFile", ex);
+                    return StatusCode(500, new { error = "An unexpected error occurred." });
                 }
-                // Generate download URL
-                var downloadUrl = await _masterService.GenerateDownloadUrlAsync(fileName);
-                if (string.IsNullOrEmpty(downloadUrl))
-                {
-                    return NotFound(new { error = "File not found or unavailable." });
-                }
-                var response = await _httpClient.GetAsync(downloadUrl);
-                if (!response.IsSuccessStatusCode)
-                {
-                    return StatusCode((int)response.StatusCode, new { error = "Failed to retrieve file" });
-                }
-                var content = await response.Content.ReadAsByteArrayAsync();
-                // Determine file content type
-                string contentType = _utility.GetContentType(fileName);
-                Response.Headers.Add("Content-Disposition", $"inline; filename=\"{fileName}\"");
-                return File(content, contentType, fileName);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError("PolicyController", "Error in ViewFile", ex);
-                return StatusCode(500, new { error = "An unexpected error occurred.", details = ex.Message });
+                return StatusCode(500, new { error = "An internal server error occurred." });
             }
         }
     }

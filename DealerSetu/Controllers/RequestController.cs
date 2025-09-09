@@ -35,9 +35,9 @@ namespace DealerSetu.Controllers
                 var response = await _requestService.RequestTypeFilterService();
                 return (bool)response.isError ? StatusCode(500, response) : Ok(response);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, CreateErrorResponse(ex.Message));
+                return StatusCode(500, CreateErrorResponse("An unexpected error occurred while processing your request."));
             }
         }
 
@@ -54,9 +54,9 @@ namespace DealerSetu.Controllers
                 var response = await _requestService.HPCategoryService();
                 return (bool)response.isError ? StatusCode(500, response) : Ok(response);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, CreateErrorResponse(ex.Message));
+                return StatusCode(500, CreateErrorResponse("An unexpected error occurred while processing your request."));
             }
         }
 
@@ -85,9 +85,9 @@ namespace DealerSetu.Controllers
                 var result = await _requestService.RequestListService(filter, request.PageIndex, request.PageSize);
                 return Ok(result);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, CreateErrorResponse(ex.Message));
+                return StatusCode(500, CreateErrorResponse("An unexpected error occurred while processing your request."));
             }
         }
 
@@ -115,17 +115,24 @@ namespace DealerSetu.Controllers
                 var result = await _requestService.SubmitRequestService(request, empNo, roleId);
                 return Ok(result);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, CreateErrorResponse(ex.Message));
+                return StatusCode(500, CreateErrorResponse("An unexpected error occurred while processing your request."));
             }
         }
 
         private (string empNo, string roleId) GetUserClaims()
         {
-            var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
-            var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
-            return (empNo, roleId);
+            try
+            {
+                var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
+                var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
+                return (empNo, roleId);
+            }
+            catch (Exception)
+            {
+                return (null, null);
+            }
         }
 
         private ServiceResponse CreateErrorResponse(string message)

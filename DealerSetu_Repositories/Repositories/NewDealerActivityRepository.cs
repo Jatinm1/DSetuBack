@@ -22,8 +22,15 @@ namespace DealerSetu_Repositories.Repositories
         /// <param name="configuration">Configuration containing connection string</param>
         public NewDealerActivityRepository(IConfiguration configuration)
         {
-            _connectionString = configuration.GetConnectionString("dbDealerSetuEntities")
-                ?? throw new ArgumentNullException(nameof(configuration), "Connection string not found");
+            try
+            {
+                _connectionString = configuration.GetConnectionString("dbDealerSetuEntities")
+                    ?? throw new ArgumentNullException(nameof(configuration), "Connection string not found");
+            }
+            catch
+            {
+                throw new ArgumentNullException("Configuration error occurred");
+            }
         }
 
         #region New Dealer Claim Methods
@@ -38,28 +45,35 @@ namespace DealerSetu_Repositories.Repositories
         public async Task<(List<ClaimModel> NewDealerActivityList, int TotalCount)> NewDealerActivityRepo(
             FilterModel filter, int pageIndex, int pageSize)
         {
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@EmpNo", filter.EmpNo);
-            parameters.Add("@RoleId", filter.RoleId);
-            parameters.Add("@From", filter.From);
-            parameters.Add("@To", filter.To);
-            parameters.Add("@ClaimNo", filter.ClaimNo);
-            parameters.Add("@State", filter.State);
-            parameters.Add("@Status", filter.Status);
-            parameters.Add("@Export", filter.Export);
-            parameters.Add("@PageIndex", pageIndex);
-            parameters.Add("@PageSize", pageSize);
+                var parameters = new DynamicParameters();
+                parameters.Add("@EmpNo", filter.EmpNo);
+                parameters.Add("@RoleId", filter.RoleId);
+                parameters.Add("@From", filter.From);
+                parameters.Add("@To", filter.To);
+                parameters.Add("@ClaimNo", filter.ClaimNo);
+                parameters.Add("@State", filter.State);
+                parameters.Add("@Status", filter.Status);
+                parameters.Add("@Export", filter.Export);
+                parameters.Add("@PageIndex", pageIndex);
+                parameters.Add("@PageSize", pageSize);
 
-            using var multi = await connection.QueryMultipleAsync(
-                "sp_NEWDEALER_GetClaimList", parameters, commandType: CommandType.StoredProcedure);
+                using var multi = await connection.QueryMultipleAsync(
+                    "sp_NEWDEALER_GetClaimList", parameters, commandType: CommandType.StoredProcedure);
 
-            var claimList = (await multi.ReadAsync<ClaimModel>()).ToList();
-            var totalCount = await multi.ReadSingleOrDefaultAsync<int>();
+                var claimList = (await multi.ReadAsync<ClaimModel>()).ToList();
+                var totalCount = await multi.ReadSingleOrDefaultAsync<int>();
 
-            return (claimList, totalCount);
+                return (claimList, totalCount);
+            }
+            catch
+            {
+                return (new List<ClaimModel>(), 0);
+            }
         }
 
         /// <summary>
@@ -68,10 +82,17 @@ namespace DealerSetu_Repositories.Repositories
         /// <returns>List of dealer states</returns>
         public async Task<List<DealerStateModel>> DealerStatesRepo()
         {
-            using var connection = new SqlConnection(_connectionString);
-            var states = await connection.QueryAsync<DealerStateModel>(
-                "sp_MASTER_GetDealerStates", commandType: CommandType.StoredProcedure);
-            return states.ToList();
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+                var states = await connection.QueryAsync<DealerStateModel>(
+                    "sp_MASTER_GetDealerStates", commandType: CommandType.StoredProcedure);
+                return states.ToList();
+            }
+            catch
+            {
+                return new List<DealerStateModel>();
+            }
         }
 
         /// <summary>
@@ -84,24 +105,31 @@ namespace DealerSetu_Repositories.Repositories
         public async Task<(List<ClaimModel> NewDealerPendingList, int TotalCount)> NewDealerPendingListRepo(
             FilterModel filter, int pageIndex, int pageSize)
         {
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@EmpNo", filter.EmpNo);
-            parameters.Add("@RoleId", filter.RoleId);
-            parameters.Add("@ClaimNo", filter.ClaimNo);
-            parameters.Add("@FromDate", filter.From);
-            parameters.Add("@ToDate", filter.To);
-            parameters.Add("@PageIndex", pageIndex);
-            parameters.Add("@PageSize", pageSize);
-            using var multi = await connection.QueryMultipleAsync(
-                "sp_NEWDEALER_GetPendingClaimList", parameters, commandType: CommandType.StoredProcedure);
+                var parameters = new DynamicParameters();
+                parameters.Add("@EmpNo", filter.EmpNo);
+                parameters.Add("@RoleId", filter.RoleId);
+                parameters.Add("@ClaimNo", filter.ClaimNo);
+                parameters.Add("@FromDate", filter.From);
+                parameters.Add("@ToDate", filter.To);
+                parameters.Add("@PageIndex", pageIndex);
+                parameters.Add("@PageSize", pageSize);
+                using var multi = await connection.QueryMultipleAsync(
+                    "sp_NEWDEALER_GetPendingClaimList", parameters, commandType: CommandType.StoredProcedure);
 
-            var pendingList = (await multi.ReadAsync<ClaimModel>()).ToList();
-            var totalCount = await multi.ReadSingleOrDefaultAsync<int>();
+                var pendingList = (await multi.ReadAsync<ClaimModel>()).ToList();
+                var totalCount = await multi.ReadSingleOrDefaultAsync<int>();
 
-            return (pendingList, totalCount);
+                return (pendingList, totalCount);
+            }
+            catch
+            {
+                return (new List<ClaimModel>(), 0);
+            }
         }
 
         /// <summary>
@@ -111,14 +139,21 @@ namespace DealerSetu_Repositories.Repositories
         /// <returns>Dealer user model</returns>
         public async Task<UserModel> DealerDataRepo(string requestNo)
         {
-            ValidateStringParameter(requestNo, nameof(requestNo));
+            try
+            {
+                ValidateStringParameter(requestNo, nameof(requestNo));
 
-            using var connection = new SqlConnection(_connectionString);
-            var parameters = new DynamicParameters();
-            parameters.Add("@RequestNo", requestNo);
+                using var connection = new SqlConnection(_connectionString);
+                var parameters = new DynamicParameters();
+                parameters.Add("@RequestNo", requestNo);
 
-            return await connection.QuerySingleOrDefaultAsync<UserModel>(
-                "sp_NEWDEALER_GetDealerData", parameters, commandType: CommandType.StoredProcedure);
+                return await connection.QuerySingleOrDefaultAsync<UserModel>(
+                    "sp_NEWDEALER_GetDealerData", parameters, commandType: CommandType.StoredProcedure);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         /// <summary>
@@ -132,23 +167,30 @@ namespace DealerSetu_Repositories.Repositories
         public async Task<int> SubmitClaimRepo(string requestNo, string dealerNo,
             List<ActivityModel> activityData, string empNo)
         {
-            ValidateStringParameter(requestNo, nameof(requestNo));
-            ValidateStringParameter(dealerNo, nameof(dealerNo));
-            ValidateStringParameter(empNo, nameof(empNo));
-            ValidateListParameter(activityData, nameof(activityData));
+            try
+            {
+                ValidateStringParameter(requestNo, nameof(requestNo));
+                ValidateStringParameter(dealerNo, nameof(dealerNo));
+                ValidateStringParameter(empNo, nameof(empNo));
+                ValidateListParameter(activityData, nameof(activityData));
 
-            using var connection = new SqlConnection(_connectionString);
-            var activitiesJson = JsonConvert.SerializeObject(activityData);
+                using var connection = new SqlConnection(_connectionString);
+                var activitiesJson = JsonConvert.SerializeObject(activityData);
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@RequestNo", requestNo);
-            parameters.Add("@DealerNo", dealerNo);
-            parameters.Add("@EmpNo", empNo);
-            parameters.Add("@CreatedDate", DateTime.Now);
-            parameters.Add("@ClaimActivities", activitiesJson);
+                var parameters = new DynamicParameters();
+                parameters.Add("@RequestNo", requestNo);
+                parameters.Add("@DealerNo", dealerNo);
+                parameters.Add("@EmpNo", empNo);
+                parameters.Add("@CreatedDate", DateTime.Now);
+                parameters.Add("@ClaimActivities", activitiesJson);
 
-            return await connection.QuerySingleAsync<int>(
-                "sp_NEWDEALER_SubmitClaim", parameters, commandType: CommandType.StoredProcedure);
+                return await connection.QuerySingleAsync<int>(
+                    "sp_NEWDEALER_SubmitClaim", parameters, commandType: CommandType.StoredProcedure);
+            }
+            catch
+            {
+                return 0;
+            }
         }
 
         /// <summary>
@@ -160,20 +202,27 @@ namespace DealerSetu_Repositories.Repositories
         /// <returns>Updated claim ID</returns>
         public async Task<int> UpdateClaimRepo(int claimId, List<ActivityModel> activityData, string empNo)
         {
-            ValidateIntParameter(claimId, nameof(claimId));
-            ValidateStringParameter(empNo, nameof(empNo));
-            ValidateListParameter(activityData, nameof(activityData));
+            try
+            {
+                ValidateIntParameter(claimId, nameof(claimId));
+                ValidateStringParameter(empNo, nameof(empNo));
+                ValidateListParameter(activityData, nameof(activityData));
 
-            using var connection = new SqlConnection(_connectionString);
-            var activitiesJson = JsonConvert.SerializeObject(activityData);
+                using var connection = new SqlConnection(_connectionString);
+                var activitiesJson = JsonConvert.SerializeObject(activityData);
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@ClaimId", claimId);
-            parameters.Add("@EmpNo", empNo);
-            parameters.Add("@ActivityData", activitiesJson);
+                var parameters = new DynamicParameters();
+                parameters.Add("@ClaimId", claimId);
+                parameters.Add("@EmpNo", empNo);
+                parameters.Add("@ActivityData", activitiesJson);
 
-            return await connection.QuerySingleAsync<int>(
-                "sp_NEWDEALER_UpdateClaim", parameters, commandType: CommandType.StoredProcedure);
+                return await connection.QuerySingleAsync<int>(
+                    "sp_NEWDEALER_UpdateClaim", parameters, commandType: CommandType.StoredProcedure);
+            }
+            catch
+            {
+                return 0;
+            }
         }
 
         /// <summary>
@@ -183,23 +232,30 @@ namespace DealerSetu_Repositories.Repositories
         /// <returns>Result of the approval/rejection operation</returns>
         public async Task<int> ApproveRejectClaimRepo(FilterModel filter)
         {
-            ValidateObjectParameter(filter, nameof(filter));
+            try
+            {
+                ValidateObjectParameter(filter, nameof(filter));
 
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@ClaimId", filter.ClaimId);
-            parameters.Add("@IsApproved", filter.IsApproved);
-            parameters.Add("@EmpNo", filter.EmpNo);
-            parameters.Add("@RoleId", filter.RoleId);
-            parameters.Add("@RejectRemarks", filter.RejectRemarks ?? string.Empty);
-            parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                var parameters = new DynamicParameters();
+                parameters.Add("@ClaimId", filter.ClaimId);
+                parameters.Add("@IsApproved", filter.IsApproved);
+                parameters.Add("@EmpNo", filter.EmpNo);
+                parameters.Add("@RoleId", filter.RoleId);
+                parameters.Add("@RejectRemarks", filter.RejectRemarks ?? string.Empty);
+                parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-            await connection.ExecuteAsync(
-                "sp_NEWDEALER_ApproveRejectClaim", parameters, commandType: CommandType.StoredProcedure);
+                await connection.ExecuteAsync(
+                    "sp_NEWDEALER_ApproveRejectClaim", parameters, commandType: CommandType.StoredProcedure);
 
-            return parameters.Get<int>("@Result");
+                return parameters.Get<int>("@Result");
+            }
+            catch
+            {
+                return 0;
+            }
         }
 
         /// <summary>
@@ -209,21 +265,28 @@ namespace DealerSetu_Repositories.Repositories
         /// <returns>Claim model with activity details</returns>
         public async Task<ClaimModel> ClaimDetailsRepo(int claimId)
         {
-            ValidateIntParameter(claimId, nameof(claimId));
-
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
-
-            using var multi = await connection.QueryMultipleAsync(
-                "sp_NEWDEALER_GetClaimDetails", new { ClaimId = claimId }, commandType: CommandType.StoredProcedure);
-
-            var claimDetails = await multi.ReadFirstOrDefaultAsync<ClaimModel>();
-            if (claimDetails != null)
+            try
             {
-                claimDetails.ActivityDetails = (await multi.ReadAsync<ActivityModel>()).ToList();
-            }
+                ValidateIntParameter(claimId, nameof(claimId));
 
-            return claimDetails;
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                using var multi = await connection.QueryMultipleAsync(
+                    "sp_NEWDEALER_GetClaimDetails", new { ClaimId = claimId }, commandType: CommandType.StoredProcedure);
+
+                var claimDetails = await multi.ReadFirstOrDefaultAsync<ClaimModel>();
+                if (claimDetails != null)
+                {
+                    claimDetails.ActivityDetails = (await multi.ReadAsync<ActivityModel>()).ToList();
+                }
+
+                return claimDetails;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         #endregion
@@ -237,15 +300,22 @@ namespace DealerSetu_Repositories.Repositories
         /// <returns>Actual claim model</returns>
         public async Task<ActualClaimModel> ActualClaimDetailsRepo(int activityId)
         {
-            ValidateIntParameter(activityId, nameof(activityId));
+            try
+            {
+                ValidateIntParameter(activityId, nameof(activityId));
 
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            using var multi = await connection.QueryMultipleAsync(
-                "sp_NEWDEALER_GetActualClaimDetails", new { ActivityId = activityId }, commandType: CommandType.StoredProcedure);
+                using var multi = await connection.QueryMultipleAsync(
+                    "sp_NEWDEALER_GetActualClaimDetails", new { ActivityId = activityId }, commandType: CommandType.StoredProcedure);
 
-            return await multi.ReadFirstOrDefaultAsync<ActualClaimModel>();
+                return await multi.ReadFirstOrDefaultAsync<ActualClaimModel>();
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         /// <summary>
@@ -255,51 +325,64 @@ namespace DealerSetu_Repositories.Repositories
         /// <returns>Result of the add/update operation</returns>
         public async Task<int> AddActualClaimRepo(ActualClaimModel actualClaim)
         {
-            ValidateObjectParameter(actualClaim, nameof(actualClaim));
+            try
+            {
+                ValidateObjectParameter(actualClaim, nameof(actualClaim));
 
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@ActivityId", actualClaim.ActivityId);
-            parameters.Add("@EmpNo", actualClaim.EmpNo);
-            parameters.Add("@ActualExpenses", actualClaim.ActualExpenses);
-            parameters.Add("@DateOfActivity", actualClaim.DateOfActivity);
-            parameters.Add("@CustomerContacted", actualClaim.CustomerContacted);
-            parameters.Add("@Enquiry", actualClaim.Enquiry);
-            parameters.Add("@Delivery", actualClaim.Delivery);
-            parameters.Add("@Image1", actualClaim.Image1);
-            parameters.Add("@Image2", actualClaim.Image2);
-            parameters.Add("@Image3", actualClaim.Image3);
-            parameters.Add("@ActualClaimOn", actualClaim.ActualClaimOn);
+                var parameters = new DynamicParameters();
+                parameters.Add("@ActivityId", actualClaim.ActivityId);
+                parameters.Add("@EmpNo", actualClaim.EmpNo);
+                parameters.Add("@ActualExpenses", actualClaim.ActualExpenses);
+                parameters.Add("@DateOfActivity", actualClaim.DateOfActivity);
+                parameters.Add("@CustomerContacted", actualClaim.CustomerContacted);
+                parameters.Add("@Enquiry", actualClaim.Enquiry);
+                parameters.Add("@Delivery", actualClaim.Delivery);
+                parameters.Add("@Image1", actualClaim.Image1);
+                parameters.Add("@Image2", actualClaim.Image2);
+                parameters.Add("@Image3", actualClaim.Image3);
+                parameters.Add("@ActualClaimOn", actualClaim.ActualClaimOn);
 
-            return await connection.ExecuteScalarAsync<int>(
-                "sp_NEWDEALER_AddUpdateActualClaim", parameters, commandType: CommandType.StoredProcedure);
+                return await connection.ExecuteScalarAsync<int>(
+                    "sp_NEWDEALER_AddUpdateActualClaim", parameters, commandType: CommandType.StoredProcedure);
+            }
+            catch
+            {
+                return 0;
+            }
         }
-
 
         public async Task<int> UpdateActualClaimRepo(ActualClaimUpdateModel actualClaim)
         {
-            ValidateObjectParameter(actualClaim, nameof(actualClaim));
+            try
+            {
+                ValidateObjectParameter(actualClaim, nameof(actualClaim));
 
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@ActivityId", actualClaim.ActivityId);
-            parameters.Add("@EmpNo", actualClaim.EmpNo);
-            parameters.Add("@ActualExpenses", actualClaim.ActualExpenses);
-            parameters.Add("@DateOfActivity", actualClaim.DateOfActivity);
-            parameters.Add("@CustomerContacted", actualClaim.CustomerContacted);
-            parameters.Add("@Enquiry", actualClaim.Enquiry);
-            parameters.Add("@Delivery", actualClaim.Delivery);
-            parameters.Add("@Image1", actualClaim.Image1);
-            parameters.Add("@Image2", actualClaim.Image2);
-            parameters.Add("@Image3", actualClaim.Image3);
-            parameters.Add("@ActualClaimOn", actualClaim.ActualClaimOn);
+                var parameters = new DynamicParameters();
+                parameters.Add("@ActivityId", actualClaim.ActivityId);
+                parameters.Add("@EmpNo", actualClaim.EmpNo);
+                parameters.Add("@ActualExpenses", actualClaim.ActualExpenses);
+                parameters.Add("@DateOfActivity", actualClaim.DateOfActivity);
+                parameters.Add("@CustomerContacted", actualClaim.CustomerContacted);
+                parameters.Add("@Enquiry", actualClaim.Enquiry);
+                parameters.Add("@Delivery", actualClaim.Delivery);
+                parameters.Add("@Image1", actualClaim.Image1);
+                parameters.Add("@Image2", actualClaim.Image2);
+                parameters.Add("@Image3", actualClaim.Image3);
+                parameters.Add("@ActualClaimOn", actualClaim.ActualClaimOn);
 
-            return await connection.ExecuteScalarAsync<int>(
-                "sp_NEWDEALER_UpdateActualClaim", parameters, commandType: CommandType.StoredProcedure);
+                return await connection.ExecuteScalarAsync<int>(
+                    "sp_NEWDEALER_UpdateActualClaim", parameters, commandType: CommandType.StoredProcedure);
+            }
+            catch
+            {
+                return 0;
+            }
         }
 
         /// <summary>
@@ -309,20 +392,27 @@ namespace DealerSetu_Repositories.Repositories
         /// <returns>List of actual claim models</returns>
         public async Task<List<ActualClaimModel>> ActualClaimListRepo(FilterModel filter)
         {
-            ValidateObjectParameter(filter, nameof(filter));
+            try
+            {
+                ValidateObjectParameter(filter, nameof(filter));
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@ClaimId", filter.ClaimId, DbType.Int32);
-            parameters.Add("@EmpNo", filter.EmpNo, DbType.String);
-            parameters.Add("@RoleId", filter.RoleId, DbType.Int32);
+                var parameters = new DynamicParameters();
+                parameters.Add("@ClaimId", filter.ClaimId, DbType.Int32);
+                parameters.Add("@EmpNo", filter.EmpNo, DbType.String);
+                parameters.Add("@RoleId", filter.RoleId, DbType.Int32);
 
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            var result = await connection.QueryAsync<ActualClaimModel>(
-                "sp_NEWDEALER_GetActualClaimList", parameters, commandType: CommandType.StoredProcedure);
+                var result = await connection.QueryAsync<ActualClaimModel>(
+                    "sp_NEWDEALER_GetActualClaimList", parameters, commandType: CommandType.StoredProcedure);
 
-            return result.ToList();
+                return result.ToList();
+            }
+            catch
+            {
+                return new List<ActualClaimModel>();
+            }
         }
 
         /// <summary>
@@ -333,18 +423,25 @@ namespace DealerSetu_Repositories.Repositories
         /// <returns>Activity ID</returns>
         public async Task<int> AddActualRemarkRepo(int claimId, string remarks)
         {
-            ValidateIntParameter(claimId, nameof(claimId));
-            ValidateStringParameter(remarks, nameof(remarks));
+            try
+            {
+                ValidateIntParameter(claimId, nameof(claimId));
+                ValidateStringParameter(remarks, nameof(remarks));
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@ClaimId", claimId);
-            parameters.Add("@Remarks", remarks);
+                var parameters = new DynamicParameters();
+                parameters.Add("@ClaimId", claimId);
+                parameters.Add("@Remarks", remarks);
 
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            return await connection.QuerySingleAsync<int>(
-                "sp_NEWDEALER_AddActualRemarks", parameters, commandType: CommandType.StoredProcedure);
+                return await connection.QuerySingleAsync<int>(
+                    "sp_NEWDEALER_AddActualRemarks", parameters, commandType: CommandType.StoredProcedure);
+            }
+            catch
+            {
+                return 0;
+            }
         }
 
         /// <summary>
@@ -354,23 +451,30 @@ namespace DealerSetu_Repositories.Repositories
         /// <returns>Result of the approval/rejection operation</returns>
         public async Task<int> ApproveRejectActualClaimRepo(FilterModel filter)
         {
-            ValidateObjectParameter(filter, nameof(filter));
+            try
+            {
+                ValidateObjectParameter(filter, nameof(filter));
 
-            using var connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
+                using var connection = new SqlConnection(_connectionString);
+                await connection.OpenAsync();
 
-            var parameters = new DynamicParameters();
-            parameters.Add("@ActivityId", filter.ActivityId);
-            parameters.Add("@IsApproved", filter.IsApproved);
-            parameters.Add("@EmpNo", filter.EmpNo);
-            parameters.Add("@RoleId", filter.RoleId);
-            parameters.Add("@RejectRemarks", filter.RejectRemarks ?? string.Empty);
-            parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                var parameters = new DynamicParameters();
+                parameters.Add("@ActivityId", filter.ActivityId);
+                parameters.Add("@IsApproved", filter.IsApproved);
+                parameters.Add("@EmpNo", filter.EmpNo);
+                parameters.Add("@RoleId", filter.RoleId);
+                parameters.Add("@RejectRemarks", filter.RejectRemarks ?? string.Empty);
+                parameters.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-            await connection.ExecuteAsync(
-                "sp_NEWDEALER_ApproveRejectActualClaim", parameters, commandType: CommandType.StoredProcedure);
+                await connection.ExecuteAsync(
+                    "sp_NEWDEALER_ApproveRejectActualClaim", parameters, commandType: CommandType.StoredProcedure);
 
-            return parameters.Get<int>("@Result");
+                return parameters.Get<int>("@Result");
+            }
+            catch
+            {
+                return 0;
+            }
         }
 
         #endregion
@@ -379,26 +483,54 @@ namespace DealerSetu_Repositories.Repositories
 
         private static void ValidateStringParameter(string value, string parameterName)
         {
-            if (string.IsNullOrWhiteSpace(value))
-                throw new ArgumentNullException(parameterName, $"{parameterName} cannot be null or empty");
+            try
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                    throw new ArgumentNullException(parameterName, $"{parameterName} cannot be null or empty");
+            }
+            catch
+            {
+                throw new ArgumentException("Invalid parameter");
+            }
         }
 
         private static void ValidateIntParameter(int value, string parameterName)
         {
-            if (value <= 0)
-                throw new ArgumentException($"{parameterName} must be greater than zero", parameterName);
+            try
+            {
+                if (value <= 0)
+                    throw new ArgumentException($"{parameterName} must be greater than zero", parameterName);
+            }
+            catch
+            {
+                throw new ArgumentException("Invalid parameter");
+            }
         }
 
         private static void ValidateObjectParameter(object value, string parameterName)
         {
-            if (value == null)
-                throw new ArgumentNullException(parameterName, $"{parameterName} cannot be null");
+            try
+            {
+                if (value == null)
+                    throw new ArgumentNullException(parameterName, $"{parameterName} cannot be null");
+            }
+            catch
+            {
+                throw new ArgumentException("Invalid parameter");
+            }
         }
 
         private static void ValidateListParameter<T>(List<T> value, string parameterName)
         {
-            if (value == null || !value.Any())
-                throw new ArgumentException($"{parameterName} cannot be null or empty", parameterName);
+            try
+            {
+                if (value == null || !value.Any())
+                    throw new ArgumentException($"{parameterName} cannot be null or empty", parameterName);
+            }
+            catch
+            {
+                throw new ArgumentException("Invalid parameter");
+            }
         }
 
         #endregion

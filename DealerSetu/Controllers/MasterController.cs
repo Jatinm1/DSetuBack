@@ -41,19 +41,26 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                var response = await _masterService.EmployeeMasterService(keyword, role, pageIndex, pageSize);
-
-                if (response.isError == true)
+                try
                 {
-                    return StatusCode(500, response);
-                }
+                    var response = await _masterService.EmployeeMasterService(keyword, role, pageIndex, pageSize);
 
-                return Ok(response);
+                    if (response.isError == true)
+                    {
+                        return StatusCode(500, response);
+                    }
+
+                    return Ok(response);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("GetEmployeeList", "Error retrieving employee list", ex);
+                    return StatusCode(500, CreateErrorResponse("An error occurred while retrieving employee list"));
+                }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError("GetEmployeeList", "Error retrieving employee list", ex);
-                return StatusCode(500, CreateErrorResponse(ex.Message));
+                return StatusCode(500, CreateErrorResponse("An internal server error occurred"));
             }
         }
 
@@ -62,19 +69,26 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                var response = await _masterService.RolesDropdownService();
-
-                if (response.isError == true)
+                try
                 {
-                    return StatusCode(500, response);
-                }
+                    var response = await _masterService.RolesDropdownService();
 
-                return Ok(response);
+                    if (response.isError == true)
+                    {
+                        return StatusCode(500, response);
+                    }
+
+                    return Ok(response);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("GetRoles", "Error retrieving roles", ex);
+                    return StatusCode(500, CreateErrorResponse("An error occurred while retrieving roles"));
+                }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError("GetRoles", "Error retrieving roles", ex);
-                return StatusCode(500, CreateErrorResponse(ex.Message));
+                return StatusCode(500, CreateErrorResponse("An internal server error occurred"));
             }
         }
 
@@ -83,66 +97,83 @@ namespace DealerSetu.Controllers
         [DownloadFilesAuthorize] // Apply specific authorization
         public async Task<IActionResult> DownloadFormats(string fileName)
         {
-            if (string.IsNullOrWhiteSpace(fileName))
-            {
-                return BadRequest(new { error = "Filename cannot be empty or null." });
-            }
-
-            if (!_utility.IsValidFileName(fileName))
-            {
-                return BadRequest(new { error = "Invalid filename format." });
-            }
-
             try
             {
-                var downloadUrl = await _masterService.GenerateDownloadUrlAsync(fileName);
-
-                if (string.IsNullOrEmpty(downloadUrl))
+                try
                 {
-                    return NotFound(new { error = "File not found or unavailable." });
-                }
+                    if (string.IsNullOrWhiteSpace(fileName))
+                    {
+                        return BadRequest(new { error = "Filename cannot be empty or null." });
+                    }
 
-                return Ok(new { downloadUrl });
+                    if (!_utility.IsValidFileName(fileName))
+                    {
+                        return BadRequest(new { error = "Invalid filename format." });
+                    }
+
+                    var downloadUrl = await _masterService.GenerateDownloadUrlAsync(fileName);
+
+                    if (string.IsNullOrEmpty(downloadUrl))
+                    {
+                        return NotFound(new { error = "File not found or unavailable." });
+                    }
+
+                    return Ok(new { downloadUrl });
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    _logger.LogError("DownloadFormats", "Unauthorized access to file", ex);
+                    return StatusCode(403, new { error = "Access denied" });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("DownloadFormats", "Error generating download URL", ex);
+                    return StatusCode(500, new { error = "An unexpected error occurred." });
+                }
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception)
             {
-                _logger.LogError("DownloadFormats", "Unauthorized access to file", ex);
-                return StatusCode(403, new { error = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("DownloadFormats", "Error generating download URL", ex);
-                return StatusCode(500, new { error = "An unexpected error occurred.", details = ex.Message });
+                return StatusCode(500, new { error = "An internal server error occurred" });
             }
         }
 
         [HttpPost("UploadEmployeeExcelFile")]
         public async Task<IActionResult> UploadEmployeeExcelFile(IFormFile file, string role)
         {
-            if (file == null || string.IsNullOrEmpty(role))
-            {
-                return BadRequest(new { success = false, message = "File or role is missing." });
-            }
-
             try
             {
-                var result = await _masterService.ProcessEmployeeExcelFile(file, role);
-
-                if ((bool)result.isError)
+                try
                 {
-                    return BadRequest(new { success = false, message = result.Message });
-                }
+                    if (file == null || string.IsNullOrEmpty(role))
+                    {
+                        return BadRequest(new { success = false, message = "File or role is missing." });
+                    }
 
-                return Ok(new { success = true, message = "File processed and data saved successfully." });
+                    var result = await _masterService.ProcessEmployeeExcelFile(file, role);
+
+                    if ((bool)result.isError)
+                    {
+                        return BadRequest(new { success = false, message = result.Message });
+                    }
+
+                    return Ok(new { success = true, message = "File processed and data saved successfully." });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("UploadEmployeeExcelFile", "Error processing employee excel file", ex);
+                    return StatusCode(500, new
+                    {
+                        success = false,
+                        message = "An error occurred while processing the file."
+                    });
+                }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError("UploadEmployeeExcelFile", "Error processing employee excel file", ex);
                 return StatusCode(500, new
                 {
                     success = false,
-                    message = "An error occurred.",
-                    errors = new List<string> { ex.Message }
+                    message = "An internal server error occurred"
                 });
             }
         }
@@ -150,30 +181,40 @@ namespace DealerSetu.Controllers
         [HttpPost("UploadDealerExcelFile")]
         public async Task<IActionResult> UploadDealerExcelFile(IFormFile file)
         {
-            if (file == null)
-            {
-                return BadRequest(new { success = false, message = "File is missing." });
-            }
-
             try
             {
-                var result = await _masterService.ProcessDealerExcelFile(file);
-
-                if ((bool)result.isError)
+                try
                 {
-                    return BadRequest(new { success = false, message = result.Message });
-                }
+                    if (file == null)
+                    {
+                        return BadRequest(new { success = false, message = "File is missing." });
+                    }
 
-                return Ok(new { success = true, message = "File processed and data saved successfully." });
+                    var result = await _masterService.ProcessDealerExcelFile(file);
+
+                    if ((bool)result.isError)
+                    {
+                        return BadRequest(new { success = false, message = result.Message });
+                    }
+
+                    return Ok(new { success = true, message = "File processed and data saved successfully." });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("UploadDealerExcelFile", "Error processing dealer excel file", ex);
+                    return StatusCode(500, new
+                    {
+                        success = false,
+                        message = "An error occurred while processing the file."
+                    });
+                }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError("UploadDealerExcelFile", "Error processing dealer excel file", ex);
                 return StatusCode(500, new
                 {
                     success = false,
-                    message = "An error occurred.",
-                    errors = new List<string> { ex.Message }
+                    message = "An internal server error occurred"
                 });
             }
         }
@@ -181,27 +222,34 @@ namespace DealerSetu.Controllers
         [HttpPost("GetDealerList")]
         public async Task<IActionResult> GetDealerList([FromBody] DealerListRequest request)
         {
-            if (request == null)
-            {
-                return BadRequest(CreateErrorResponse("Invalid request data.", "400"));
-            }
-
             try
             {
-                var keyword = string.IsNullOrWhiteSpace(request.Keyword) || request.Keyword == "string" ? null : request.Keyword;
-                var response = await _masterService.DealerMasterService(keyword, request.PageIndex, request.PageSize);
-
-                if (response.isError == true)
+                try
                 {
-                    return StatusCode(500, response);
-                }
+                    if (request == null)
+                    {
+                        return BadRequest(CreateErrorResponse("Invalid request data.", "400"));
+                    }
 
-                return Ok(response);
+                    var keyword = string.IsNullOrWhiteSpace(request.Keyword) || request.Keyword == "string" ? null : request.Keyword;
+                    var response = await _masterService.DealerMasterService(keyword, request.PageIndex, request.PageSize);
+
+                    if (response.isError == true)
+                    {
+                        return StatusCode(500, response);
+                    }
+
+                    return Ok(response);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("GetDealerList", "Error retrieving dealer list", ex);
+                    return StatusCode(500, CreateErrorResponse("An error occurred while retrieving dealer list"));
+                }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError("GetDealerList", "Error retrieving dealer list", ex);
-                return StatusCode(500, CreateErrorResponse(ex.Message));
+                return StatusCode(500, CreateErrorResponse("An internal server error occurred"));
             }
         }
 
@@ -210,42 +258,49 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                // Extract and validate UserId from JWT token
-                var empIdClaim = _jwtHelper.GetClaimValue(HttpContext, "UserId");
-                if (string.IsNullOrEmpty(empIdClaim))
+                try
                 {
-                    return BadRequest(new { error = "Missing UserId claim in the token" });
-                }
+                    // Extract and validate UserId from JWT token
+                    var empIdClaim = _jwtHelper.GetClaimValue(HttpContext, "UserId");
+                    if (string.IsNullOrEmpty(empIdClaim))
+                    {
+                        return BadRequest(new { error = "Missing UserId claim in the token" });
+                    }
 
-                // Input validation
-                var validationResult = ValidateEmployeeUpdateRequest(request);
-                if (validationResult != null)
+                    // Input validation
+                    var validationResult = ValidateEmployeeUpdateRequest(request);
+                    if (validationResult != null)
+                    {
+                        return validationResult;
+                    }
+
+                    // Sanitize inputs
+                    string sanitizedName = _fileValidationService.SanitizeInput(request.EmpName);
+                    string sanitizedEmail = _fileValidationService.SanitizeEmail(request.Email);
+
+                    // Update employee details with sanitized inputs
+                    var result = await _masterService.UpdateEmployeeDetailsService(
+                        request.UserId,
+                        sanitizedName,
+                        sanitizedEmail
+                    );
+
+                    if (!result.IsSuccess)
+                    {
+                        return BadRequest(new { error = result.Message });
+                    }
+
+                    return Ok(new { rowsAffected = result.RowsAffected, message = result.Message });
+                }
+                catch (Exception ex)
                 {
-                    return validationResult;
+                    _logger.LogError("UpdateEmployeeDetails", "Error updating employee details", ex);
+                    return StatusCode(500, new { error = "An unexpected error occurred." });
                 }
-
-                // Sanitize inputs
-                string sanitizedName = _fileValidationService.SanitizeInput(request.EmpName);
-                string sanitizedEmail = _fileValidationService.SanitizeEmail(request.Email);
-
-                // Update employee details with sanitized inputs
-                var result = await _masterService.UpdateEmployeeDetailsService(
-                    request.UserId,
-                    sanitizedName,
-                    sanitizedEmail
-                );
-
-                if (!result.IsSuccess)
-                {
-                    return BadRequest(new { error = result.Message });
-                }
-
-                return Ok(new { rowsAffected = result.RowsAffected, message = result.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError("UpdateEmployeeDetails", "Error updating employee details", ex);
-                return StatusCode(500, new { error = "An unexpected error occurred.", details = ex.Message });
+                return StatusCode(500, new { error = "An internal server error occurred" });
             }
         }
 
@@ -254,18 +309,25 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                if (request == null || request.UserId == null)
+                try
                 {
-                    return BadRequest(new { error = "UserId cannot be empty" });
-                }
+                    if (request == null || request.UserId == null)
+                    {
+                        return BadRequest(new { error = "UserId cannot be empty" });
+                    }
 
-                var message = await _masterService.DeleteUserService(request.UserId);
-                return Ok(new { message });
+                    var message = await _masterService.DeleteUserService(request.UserId);
+                    return Ok(new { message });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("DeleteUser", "Error deleting user", ex);
+                    return StatusCode(500, new { error = "An unexpected error occurred." });
+                }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError("DeleteUser", "Error deleting user", ex);
-                return StatusCode(500, new { error = "An unexpected error occurred.", details = ex.Message });
+                return StatusCode(500, new { error = "An internal server error occurred" });
             }
         }
 
@@ -274,37 +336,44 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                // Input validation
-                var validationResult = ValidateDealerUpdateRequest(request);
-                if (validationResult != null)
+                try
                 {
-                    return validationResult;
+                    // Input validation
+                    var validationResult = ValidateDealerUpdateRequest(request);
+                    if (validationResult != null)
+                    {
+                        return validationResult;
+                    }
+
+                    // Sanitize inputs
+                    var sanitizedInputs = SanitizeDealerInputs(request);
+
+                    // Update dealer details
+                    var result = await _masterService.UpdateDealerDetailsService(
+                        request.UserId,
+                        sanitizedInputs.Item1, // EmpName
+                        sanitizedInputs.Item2, // Location
+                        sanitizedInputs.Item3, // District
+                        sanitizedInputs.Item4, // Zone
+                        sanitizedInputs.Item5  // State
+                    );
+
+                    if (!result.IsSuccess)
+                    {
+                        return BadRequest(new { error = result.Message });
+                    }
+
+                    return Ok(new { rowsAffected = result.RowsAffected, message = result.Message });
                 }
-
-                // Sanitize inputs
-                var sanitizedInputs = SanitizeDealerInputs(request);
-
-                // Update dealer details
-                var result = await _masterService.UpdateDealerDetailsService(
-                    request.UserId,
-                    sanitizedInputs.Item1, // EmpName
-                    sanitizedInputs.Item2, // Location
-                    sanitizedInputs.Item3, // District
-                    sanitizedInputs.Item4, // Zone
-                    sanitizedInputs.Item5  // State
-                );
-
-                if (!result.IsSuccess)
+                catch (Exception ex)
                 {
-                    return BadRequest(new { error = result.Message });
+                    _logger.LogError("UpdateDealerDetails", "Error updating dealer details", ex);
+                    return StatusCode(500, new { error = "An unexpected error occurred." });
                 }
-
-                return Ok(new { rowsAffected = result.RowsAffected, message = result.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError("UpdateDealerDetails", "Error updating dealer details", ex);
-                return StatusCode(500, new { error = "An unexpected error occurred.", details = ex.Message });
+                return StatusCode(500, new { error = "An internal server error occurred" });
             }
         }
 

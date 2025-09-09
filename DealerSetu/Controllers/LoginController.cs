@@ -40,78 +40,124 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                var modelStateValidation = _validationHelper.ValidateModelState(ModelState);
-                if (modelStateValidation != null)
-                    return BadRequest(modelStateValidation);
-
-                var payloadValidation = _validationHelper.ValidateLoginPayload(payload);
-                if (payloadValidation != null)
-                    return BadRequest(payloadValidation);
-
-                // Decrypt AES key and IV
-                string decryptedKeyString;
-                string decryptedIvString;
                 try
                 {
-                    decryptedKeyString = _rsaKeyService.DecryptRSA(payload.EncryptedKey);
-                    decryptedIvString = _rsaKeyService.DecryptRSA(payload.EncryptedIV);
-                }
-                catch (CryptographicException ex)
-                {
-                    _logger.LogError("LoginUser", "Failed to decrypt key/IV", ex);
-                    return BadRequest(new ServiceResponse
+                    var modelStateValidation = _validationHelper.ValidateModelState(ModelState);
+                    if (modelStateValidation != null)
+                        return BadRequest(modelStateValidation);
+
+                    var payloadValidation = _validationHelper.ValidateLoginPayload(payload);
+                    if (payloadValidation != null)
+                        return BadRequest(payloadValidation);
+
+                    // Decrypt AES key and IV
+                    string decryptedKeyString;
+                    string decryptedIvString;
+                    try
                     {
-                        Status = "Failure",
-                        Code = "400",
-                        Message = "Failed to decrypt key/IV"
-                    });
-                }
-
-                byte[] aesKey = Convert.FromBase64String(decryptedKeyString);
-                byte[] aesIv = Convert.FromBase64String(decryptedIvString);
-
-                var keyValidation = _validationHelper.ValidateAESKeyAndIV(aesKey, aesIv);
-                if (keyValidation != null)
-                    return BadRequest(keyValidation);
-
-                try
-                {
-                    byte[] encryptedDataBytes = Convert.FromBase64String(payload.EncryptedData);
-                    string decryptedJson = AESDecryption.DecryptAES(encryptedDataBytes, aesKey, aesIv);
-
-                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                    var loginModel = JsonSerializer.Deserialize<LoginModel>(decryptedJson, options);
-
-                    var loginModelValidation = _validationHelper.ValidateLoginModel(loginModel);
-                    if (loginModelValidation != null)
-                        return BadRequest(loginModelValidation);
-
-                    //************************************RECAPTHA CHECK************************************
-                    //*******************************COMMENTED FOR LOCAL USE********************************
-
-                    if (!await _recaptchaService.VerifyAsync(payload.reCaptcha))
+                        decryptedKeyString = _rsaKeyService.DecryptRSA(payload.EncryptedKey);
+                        decryptedIvString = _rsaKeyService.DecryptRSA(payload.EncryptedIV);
+                    }
+                    catch (CryptographicException ex)
                     {
-                        return Ok(new { Message = "reCAPTCHA Verification Failed.", Status = 500 });
+                        _logger.LogError("LoginUser", "Failed to decrypt key/IV", ex);
+                        return BadRequest(new ServiceResponse
+                        {
+                            Status = "Failure",
+                            Code = "400",
+                            Message = "Failed to decrypt key/IV"
+                        });
                     }
 
-                    var result = await _loginService.Login_Service(loginModel); // Local
-                    //var result = await _loginService.LDAPLoginService(loginModel); // LDAP
-                    return Ok(result);
+                    byte[] aesKey = Convert.FromBase64String(decryptedKeyString);
+                    byte[] aesIv = Convert.FromBase64String(decryptedIvString);
+
+                    var keyValidation = _validationHelper.ValidateAESKeyAndIV(aesKey, aesIv);
+                    if (keyValidation != null)
+                        return BadRequest(keyValidation);
+
+                    try
+                    {
+                        byte[] encryptedDataBytes = Convert.FromBase64String(payload.EncryptedData);
+                        string decryptedJson = AESDecryption.DecryptAES(encryptedDataBytes, aesKey, aesIv);
+
+                        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                        var loginModel = JsonSerializer.Deserialize<LoginModel>(decryptedJson, options);
+                        // Add Browser & IP Info
+                        string userAgent = Request.Headers["User-Agent"].ToString();
+                        string browserName = "Unknown";
+                        string browserVersion = "Unknown";
+
+                        if (!string.IsNullOrEmpty(userAgent))
+                        {
+                            if (userAgent.Contains("Chrome"))
+                            {
+                                browserName = "Chrome";
+                                browserVersion = userAgent.Split("Chrome/")[1].Split(' ')[0];
+                            }
+                            else if (userAgent.Contains("Firefox"))
+                            {
+                                browserName = "Firefox";
+                                browserVersion = userAgent.Split("Firefox/")[1];
+                            }
+                            else if (userAgent.Contains("Edg"))
+                            {
+                                browserName = "Edge";
+                                browserVersion = userAgent.Split("Edg/")[1].Split(' ')[0];
+                            }
+                            else if (userAgent.Contains("Safari") && userAgent.Contains("Version/"))
+                            {
+                                browserName = "Safari";
+                                browserVersion = userAgent.Split("Version/")[1].Split(' ')[0];
+                            }
+                        }
+
+                        string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+                        loginModel.BrowserName = browserName;
+                        loginModel.BrowserVersion = browserVersion;
+                        loginModel.IpAddress = ipAddress;
+
+                        var loginModelValidation = _validationHelper.ValidateLoginModel(loginModel);
+                        if (loginModelValidation != null)
+                            return BadRequest(loginModelValidation);
+
+                        //************************************RECAPTHA CHECK************************************
+                        //*******************************COMMENTED FOR LOCAL USE********************************
+
+                        //if (!await _recaptchaService.VerifyAsync(payload.reCaptcha))
+                        //{
+                        //    return Ok(new { Message = "reCAPTCHA Verification Failed.", Status = 500 });
+                        //}
+
+                        var result = await _loginService.Login_Service(loginModel); // Local
+                        //var result = await _loginService.LDAPLoginService(loginModel); // LDAP
+                        return Ok(result);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError("LoginUser", "Failed to process login data", ex);
+                        return BadRequest(new ServiceResponse
+                        {
+                            Status = "Failure",
+                            Code = "400",
+                            Message = "Failed to process login data"
+                        });
+                    }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError("LoginUser", "Failed to process login data", ex);
-                    return BadRequest(new ServiceResponse
+                    _logger.LogError("LoginUser", "An internal server error occurred", ex);
+                    return StatusCode(500, new ServiceResponse
                     {
                         Status = "Failure",
-                        Code = "400",
-                        Message = "Failed to process login data"
+                        Code = "500",
+                        Message = "An internal server error occurred"
                     });
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError("LoginUser", "An internal server error occurred", ex);
                 return StatusCode(500, new ServiceResponse
                 {
                     Status = "Failure",
@@ -127,28 +173,35 @@ namespace DealerSetu.Controllers
         //[HttpPost("LoginUser")]
         //public IActionResult LoginUser([FromBody] LoginModel model)
         //{
-        //    if (!ModelState.IsValid)
-        //    {
-        //        return BadRequest(ModelState);
-        //    }
-
         //    try
         //    {
-        //        var objModel = new LoginModel
+        //        if (!ModelState.IsValid)
         //        {
-        //            EmpNo = model.EmpNo?.Trim(), // Prevent whitespace-based bypass
-        //            Password = model.Password
-        //        };
+        //            return BadRequest(ModelState);
+        //        }
 
-        //        ServiceResponse objUserSession = _loginService.Login_Service(objModel);
+        //        try
+        //        {
+        //            var objModel = new LoginModel
+        //            {
+        //                EmpNo = model.EmpNo?.Trim(), // Prevent whitespace-based bypass
+        //                Password = model.Password
+        //            };
 
-        //        return Ok(objUserSession);
+        //            ServiceResponse objUserSession = _loginService.Login_Service(objModel);
+
+        //            return Ok(objUserSession);
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            // Log error
+        //            _logger.LogError("LoginUser", "Error processing login request", ex);
+        //            return StatusCode(500, "An error occurred while processing your request");
+        //        }
         //    }
-        //    catch (Exception ex)
+        //    catch (Exception)
         //    {
-        //        // Log error
-        //        _logger.LogError("LoginUser", "Error processing login request", ex);
-        //        return StatusCode(500, ex.Message);
+        //        return StatusCode(500, "An internal server error occurred");
         //    }
         //}
 
@@ -157,22 +210,34 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                var result = await _loginService.LogOutService(logoutModel.empNo);
-                if (result.Code != "200")
-                    return BadRequest(new { message = result.Message });
+                try
+                {
+                    var result = await _loginService.LogOutService(logoutModel.empNo);
+                    if (result.Code != "200")
+                        return BadRequest(new { message = result.Message });
 
-                Response.Cookies.Delete("jwt");
-                Response.Cookies.Delete("isAuthenticated");
-                return Ok(result);
+                    Response.Cookies.Delete("jwt");
+                    Response.Cookies.Delete("isAuthenticated");
+                    return Ok(result);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("LogoutUser", "Error during logout process", ex);
+                    return StatusCode(500, new ServiceResponse
+                    {
+                        Status = "Failure",
+                        Code = "500",
+                        Message = "An error occurred during logout"
+                    });
+                }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError("LogoutUser", "Error during logout process", ex);
                 return StatusCode(500, new ServiceResponse
                 {
                     Status = "Failure",
                     Code = "500",
-                    Message = "An error occurred during logout"
+                    Message = "An internal server error occurred"
                 });
             }
         }
@@ -184,13 +249,20 @@ namespace DealerSetu.Controllers
         //{
         //    try
         //    {
-        //        var result = await _loginService.HeartBeatAsync(request.EmpNo);
-        //        return Ok(result);
+        //        try
+        //        {
+        //            var result = await _loginService.HeartBeatAsync(request.EmpNo);
+        //            return Ok(result);
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            _logger.LogError("HeartBeat", "Error processing heartbeat", ex);
+        //            return StatusCode(500, "An error occurred while processing heartbeat");
+        //        }
         //    }
-        //    catch (Exception ex)
+        //    catch (Exception)
         //    {
-        //        _logger.LogError("HeartBeat", "Error processing heartbeat", ex);
-        //        return StatusCode(500, ex.Message);
+        //        return StatusCode(500, "An internal server error occurred");
         //    }
         //}
 
@@ -199,32 +271,45 @@ namespace DealerSetu.Controllers
         //{
         //    try
         //    {
-
-        //        var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
-        //        var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
-
-        //        var filter = new FilterModel
+        //        try
         //        {
-        //            EmpNo = empNo,
-        //            RoleId = roleId
-        //        };
-        //        var response = await _loginService.PendingCountService(filter);
+        //            var empNo = _jwtHelper.GetClaimValue(HttpContext, "EmpNo");
+        //            var roleId = _jwtHelper.GetClaimValue(HttpContext, "RoleId");
 
-        //        if (response.isError == true)
-        //        {
-        //            return StatusCode(500, response);
+        //            var filter = new FilterModel
+        //            {
+        //                EmpNo = empNo,
+        //                RoleId = roleId
+        //            };
+        //            var response = await _loginService.PendingCountService(filter);
+
+        //            if (response.isError == true)
+        //            {
+        //                return StatusCode(500, response);
+        //            }
+
+        //            return Ok(response);
         //        }
-
-        //        return Ok(response);
+        //        catch (Exception ex)
+        //        {
+        //            _logger.LogError("PendingCount", "An unexpected error occurred", ex);
+        //            return StatusCode(500, new ServiceResponse
+        //            {
+        //                isError = true,
+        //                Error = "An unexpected error occurred",
+        //                Message = "An unexpected error occurred",
+        //                Status = "Error",
+        //                Code = "500"
+        //            });
+        //        }
         //    }
-        //    catch (Exception ex)
+        //    catch (Exception)
         //    {
-        //        _logger.LogError("PendingCount", "An unexpected error occurred", ex);
         //        return StatusCode(500, new ServiceResponse
         //        {
         //            isError = true,
-        //            Error = ex.Message,
-        //            Message = "An unexpected error occurred",
+        //            Error = "An internal server error occurred",
+        //            Message = "An internal server error occurred",
         //            Status = "Error",
         //            Code = "500"
         //        });
@@ -238,13 +323,20 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                var result = await _loginService.UpdateLoginHeartbeatService(request.EmpNo);
-                return Ok(result);
+                try
+                {
+                    var result = await _loginService.UpdateLoginHeartbeatService(request.EmpNo);
+                    return Ok(result);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("LoginHeartBeat", "Error updating login heartbeat", ex);
+                    return StatusCode(500, "An error occurred while updating login heartbeat");
+                }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError("LoginHeartBeat", "Error updating login heartbeat", ex);
-                return StatusCode(500, ex.Message);
+                return StatusCode(500, "An internal server error occurred");
             }
         }
 
@@ -255,13 +347,20 @@ namespace DealerSetu.Controllers
         {
             try
             {
-                var result = await _loginService.UpdateRegularHeartbeatService(request.EmpNo);
-                return Ok(result);
+                try
+                {
+                    var result = await _loginService.UpdateRegularHeartbeatService(request.EmpNo);
+                    return Ok(result);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("RegularHeartBeat", "Error updating regular heartbeat", ex);
+                    return StatusCode(500, "An error occurred while updating regular heartbeat");
+                }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError("RegularHeartBeat", "Error updating regular heartbeat", ex);
-                return StatusCode(500, ex.Message);
+                return StatusCode(500, "An internal server error occurred");
             }
         }
     }

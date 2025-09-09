@@ -25,10 +25,6 @@ var configuration = builder.Configuration;
 builder.Services.AddDbContext<ETSContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("dbDealerSetuEntities")));
 
-// Register application services
-//builder.Services.AddHostedService<HeartbeatMonitorService>();
-builder.Services.AddHostedService<UserInactivityService>(); //HAVE TO ADD THIS AGAIN
-
 // Register singleton services
 builder.Services.AddScoped<ILoginService, LoginService>();
 builder.Services.AddHttpClient();
@@ -63,7 +59,6 @@ builder.Services.AddSingleton<RSAEncryptionService>();
 builder.Services.AddSingleton<RecaptchaService>();  // Register RecaptchaService Dependency
 builder.Services.AddSingleton<JwtHelper>();
 builder.Services.AddSingleton<ValidationHelper>();
-builder.Services.AddScoped<StorageDiagnosticsService>();
 //builder.Services.AddSingleton<IEmailService, EmailService>();
 //// Configure email settings
 //builder.Services.Configure<EmailSettings>(
@@ -260,7 +255,8 @@ app.UseRouting();
 
 // 6. Authentication and Authorization
 app.UseAuthentication(); // Must come before UseAuthorization
-app.UseMiddleware<JWTInactivityMiddleware>(); //HAVE TO ADD THIS AGAIN
+app.UseMiddleware<JWTSecurityMiddleware>(); //HAVE TO ADD THIS AGAIN
+app.UseMiddleware<ConnectionValidation>(); //HAVE TO ADD THIS AGAIN
 app.UseAuthorization();
 
 // 7. Session Middleware

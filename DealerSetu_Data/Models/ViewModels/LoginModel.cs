@@ -10,6 +10,9 @@ namespace DealerSetu_Data.Models.ViewModels
     {
         public string EmpNo { get; set; }
         public string Password { get; set; }
+        public string? BrowserName { get; set; }
+        public string? BrowserVersion { get; set; }
+        public string? IpAddress { get; set; }
     }
 
     public class UserModel
